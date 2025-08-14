@@ -30,7 +30,7 @@
   .btn.play{background:linear-gradient(180deg,#26d2ff,#1485ff)}
   .btn.stop{background:linear-gradient(180deg,#ff9a9a,#ff5d5d)}
   .btn.reverse.active{background:var(--accent2); color: var(--bg);}
-  .btn.fx-rec.active, .btn.mute-btn.muted{background:var(--warning); color: var(--bg);}
+  .btn.fx-rec.active, .btn.mute-btn.muted, .btn.flam-btn.active{background:var(--warning); color: var(--bg);}
   .panel{
     background:linear-gradient(180deg,#121b28,#0f1722);border-radius:18px;padding:16px;box-shadow:var(--shadow);margin:12px 0
   }
@@ -89,10 +89,6 @@
              style="width:74px;background:#0e1522;border:1px solid #1f2b40;color:#dff0ff;border-radius:10px;padding:8px 10px"/>
     </div>
     <div class="sp"></div>
-    <div class="hdr-knobs knobrow">
-      <div class="kwrap"><div class="knob" data-id="rollRate"><span class="dot"></span><input type="range" min="0" max="2" value="1" step="1"></div><div class="tag">Roll Rate</div></div>
-    </div>
-    <button id="rollBtn" class="btn">Roll</button>
     <button id="fxRecBtn" class="btn fx-rec">FX REC</button>
     <button id="playBtn" class="btn play">Play</button>
     <button id="stopBtn" class="btn stop">Stop</button>
@@ -181,7 +177,7 @@
     </div>
     <div class="param-section">
         <!-- MODULATION -->
-        <div class="block" style="flex: 1.5;">
+        <div class="block" style="flex: 1;">
             <div class="row knobrow" style="justify-content: center;">
                 <div class="kwrap"><div class="knob" data-id="lfoRate"><span class="dot"></span><input type="range" min="0.1" max="30" step="0.1" value="5"></div><div class="tag">LFO Rate</div></div>
                 <div class="kwrap"><div class="knob" data-id="lfoDepth"><span class="dot"></span><input type="range" min="0" max="100" value="0"></div><div class="tag">LFO Depth</div></div>
@@ -196,6 +192,15 @@
                 </div>
             </div>
             <div class="label">Modulation</div>
+        </div>
+        <!-- PERFORMANCE -->
+        <div class="block" style="flex: 1;">
+            <div class="row knobrow" style="justify-content: center;">
+                <div class="kwrap"><div class="knob" data-id="rollRate"><span class="dot"></span><input type="range" min="0" max="2" value="1" step="1"></div><div class="tag">Roll Rate</div></div>
+                <button id="rollBtn" class="btn" style="height: 60px; width: 86px;">Roll</button>
+                <button id="flamBtn" class="btn flam-btn" style="height: 60px; width: 86px;">Flam</button>
+            </div>
+            <div class="label">Performance</div>
         </div>
         <!-- MIX & FX -->
         <div class="block" style="flex: 2.5;">
@@ -393,7 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
     lp:12000, hp:30, res:0.7, a:2, h:0, d:80,s:0,r:120, fdecay: 200, pan:0,
     lfoRate: 5, lfoDepth: 0, lfoTarget: 'pitch', velocity: 100,
     reverbSend: 0, delaySend: 0, delayTime: 0.25, delayFb: 0.3,
-    muted:false, steps:Array(128).fill(0), name:'New Sound', muteGroup: 0
+    muted:false, steps:Array(128).fill(0), name:'New Sound', muteGroup: 0, flam: false
     });
 
     const soundPresets = [
@@ -468,6 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
             b.classList.toggle('sel', b.dataset.target === p.lfoTarget);
         });
         document.getElementById('presetName').textContent = p.name;
+        document.getElementById('flamBtn').classList.toggle('active', p.flam);
         updateTrackDisplay();
     }
 
@@ -565,7 +571,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const timeAt = lastTick + ((step % 2) ? swingAmt : -swingAmt);
         tracks.forEach((t,ti)=>{
-        if(!t.params.muted && t.params.steps[seqPos]) triggerVoice(t, ti, timeAt + stepDur);
+            if(!t.params.muted && t.params.steps[seqPos]) {
+                if (t.params.flam) {
+                    triggerVoice(t, ti, timeAt + stepDur - 0.03, t.params.velocity * 0.5);
+                }
+                triggerVoice(t, ti, timeAt + stepDur);
+            }
         });
 
         if (motionData.hp[absoluteStep] !== undefined) masterHP.frequency.setTargetAtTime(motionData.hp[absoluteStep], timeAt + stepDur, 0.01);
@@ -721,6 +732,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const p = tracks[currentTrack].params;
         p.muted = !p.muted;
         updateTrackDisplay();
+    });
+
+    document.getElementById('flamBtn').addEventListener('click', (e) => {
+        const p = tracks[currentTrack].params;
+        p.flam = !p.flam;
+        e.target.classList.toggle('active', p.flam);
     });
 
     document.getElementById('prevPageBtn').addEventListener('click', () => {
