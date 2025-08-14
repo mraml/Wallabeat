@@ -92,7 +92,7 @@
   .knob .dot{
     width:6px;height:6px;border-radius:50%;background:#bfe4ff;
     transform-origin: center;
-    transform: rotate(0deg) translateY(calc(-1 * var(--size) / 2.7));
+    transform: rotate(0deg) translateY(calc(-1 * var(--size) / 3.0));
   }
   .kwrap{display:flex;flex-direction:column;align-items:center;gap:6px;width:86px}
   .kwrap .tag{font-size:12px;color:#a5b8d9;text-align:center}
@@ -123,8 +123,6 @@
   </header>
 
   <section class="panel">
-    <div class="title">Track Parameters: <span id="trackName">Kick</span></div>
-
     <div class="block" style="display:flex;align-items:center;justify-content:space-between;gap:16px; flex-wrap: wrap;">
       <div class="preset">
         <button id="prevPreset" class="mini">&lt;</button>
@@ -230,494 +228,491 @@
   </section>
 
   <section class="panel">
-    <div class="title">Tracks</div>
     <div id="tracks" class="tracks"></div>
   </section>
 
   <section class="panel">
-    <div class="title">Sequencer</div>
     <div id="seq" class="seq"></div>
   </section>
 
 </div>
 
 <script>
-/* ---------- Utilities: rotary visuals ---------- */
-function initKnobs() {
-    document.querySelectorAll('.knob').forEach(k=>{
-      const input=k.querySelector('input');
-      const dot=k.querySelector('.dot');
-      const update=()=>{
-        const min=+input.min, max=+input.max, val=+input.value;
-        const pct=(val-min)/(max-min);
-        const deg = -135 + pct * 270; // Corrected range for 7 o'clock to 5 o'clock
-        dot.style.transform=`rotate(${deg}deg) translateY(calc(-1 * var(--size) / 2.7))`;
-      };
-      input.addEventListener('input',update);
-      input.dispatchEvent(new Event('input'));
+document.addEventListener('DOMContentLoaded', () => {
+    /* ---------- Utilities: rotary visuals ---------- */
+    function initKnobs() {
+        document.querySelectorAll('.knob').forEach(k=>{
+        const input=k.querySelector('input');
+        const dot=k.querySelector('.dot');
+        const update=()=>{
+            const min=+input.min, max=+input.max, val=+input.value;
+            const pct=(val-min)/(max-min);
+            const deg = -135 + pct * 270; // Corrected range for 7 o'clock to 5 o'clock
+            dot.style.transform=`rotate(${deg}deg) translateY(calc(-1 * var(--size) / 3.0))`;
+        };
+        input.addEventListener('input',update);
+        input.dispatchEvent(new Event('input'));
+        });
+    }
+    initKnobs();
+
+    /* ---------- Audio Engine ---------- */
+    const AudioCtx=window.AudioContext||window.webkitAudioContext;
+    const ctx=new AudioCtx();
+    let masterGain=ctx.createGain(); masterGain.gain.value=0.8;
+    let driveNode=ctx.createWaveShaper();
+    let tapeWobble = ctx.createOscillator();
+    let tapeWobbleGain = ctx.createGain();
+    tapeWobble.frequency.value = 0.5;
+    tapeWobble.connect(tapeWobbleGain);
+    tapeWobble.start();
+    let masterHP = ctx.createBiquadFilter(); masterHP.type = 'highpass'; masterHP.frequency.value = 20;
+    let masterLP = ctx.createBiquadFilter(); masterLP.type = 'lowpass'; masterLP.frequency.value = 20000;
+    let comp=ctx.createDynamicsCompressor();
+    let activeVoices = [null, null, null];
+
+    masterGain.connect(driveNode).connect(masterHP).connect(masterLP).connect(comp).connect(ctx.destination);
+
+    function setDrive(amount){
+        const k=amount*2+1; const n=44100; const curve=new Float32Array(n);
+        for(let i=0;i<n;i++){ const x=i*2/n-1; curve[i]=Math.tanh(k*x); }
+        driveNode.curve=curve;
+    }
+    function setTape(amount) {
+        const intensity = amount / 100;
+        tapeWobbleGain.gain.value = intensity * 2; // Pitch wobble
+        const hpFreq = 20 + intensity * 200;
+        const lpFreq = 20000 - intensity * 10000;
+        masterHP.frequency.setTargetAtTime(hpFreq, ctx.currentTime, 0.01);
+        masterLP.frequency.setTargetAtTime(lpFreq, ctx.currentTime, 0.01);
+    }
+    function setComp(amount) {
+        comp.threshold.value = -50 + (1-amount) * 50;
+        comp.ratio.value = 1 + amount * 19;
+    }
+
+    function makeImpulse(len=2,decay=0.4){
+    const rate=ctx.sampleRate; const length=rate*len; const ir=ctx.createBuffer(2,length,rate);
+    for(let ch=0; ch<2; ch++){
+        const data=ir.getChannelData(ch);
+        for(let i=0;i<length;i++){data[i]=(Math.random()*2-1)*Math.pow(1-i/length, decay);}
+    } return ir;
+    }
+    const impulseBuffer = makeImpulse(2.2, 0.5);
+
+    const trackFX = [...Array(8)].map(() => {
+        const reverb = ctx.createConvolver(); reverb.buffer = impulseBuffer;
+        const reverbSend = ctx.createGain(); reverbSend.gain.value = 0;
+        reverbSend.connect(reverb).connect(masterGain);
+
+        const delay = ctx.createDelay(1.0); const delayFb = ctx.createGain();
+        const delaySend = ctx.createGain(); delaySend.gain.value = 0;
+        delaySend.connect(delay); delay.connect(delayFb).connect(delay);
+        delay.connect(masterGain);
+        return { reverbSend, delay, delayFb, delaySend };
     });
-}
-initKnobs();
 
-/* ---------- Audio Engine ---------- */
-const AudioCtx=window.AudioContext||window.webkitAudioContext;
-const ctx=new AudioCtx();
-let masterGain=ctx.createGain(); masterGain.gain.value=0.8;
-let driveNode=ctx.createWaveShaper();
-let tapeWobble = ctx.createOscillator();
-let tapeWobbleGain = ctx.createGain();
-tapeWobble.frequency.value = 0.5;
-tapeWobble.connect(tapeWobbleGain);
-tapeWobble.start();
-let masterHP = ctx.createBiquadFilter(); masterHP.type = 'highpass'; masterHP.frequency.value = 20;
-let masterLP = ctx.createBiquadFilter(); masterLP.type = 'lowpass'; masterLP.frequency.value = 20000;
-let comp=ctx.createDynamicsCompressor();
-let activeVoices = [null, null, null];
+    function triggerVoice(track, trackIndex, when=ctx.currentTime, velocityOverride = null){
+    const p=track.params;
+    const velocity = (velocityOverride || p.steps[step % 16] || p.velocity) / 127;
+    const vGain=ctx.createGain();
 
-masterGain.connect(driveNode).connect(masterHP).connect(masterLP).connect(comp).connect(ctx.destination);
-
-function setDrive(amount){
-    const k=amount*2+1; const n=44100; const curve=new Float32Array(n);
-    for(let i=0;i<n;i++){ const x=i*2/n-1; curve[i]=Math.tanh(k*x); }
-    driveNode.curve=curve;
-}
-function setTape(amount) {
-    const intensity = amount / 100;
-    tapeWobbleGain.gain.value = intensity * 2; // Pitch wobble
-    const hpFreq = 20 + intensity * 200;
-    const lpFreq = 20000 - intensity * 10000;
-    masterHP.frequency.setTargetAtTime(hpFreq, ctx.currentTime, 0.01);
-    masterLP.frequency.setTargetAtTime(lpFreq, ctx.currentTime, 0.01);
-}
-function setComp(amount) {
-    comp.threshold.value = -50 + (1-amount) * 50;
-    comp.ratio.value = 1 + amount * 19;
-}
-
-function makeImpulse(len=2,decay=0.4){
-  const rate=ctx.sampleRate; const length=rate*len; const ir=ctx.createBuffer(2,length,rate);
-  for(let ch=0; ch<2; ch++){
-    const data=ir.getChannelData(ch);
-    for(let i=0;i<length;i++){data[i]=(Math.random()*2-1)*Math.pow(1-i/length, decay);}
-  } return ir;
-}
-const impulseBuffer = makeImpulse(2.2, 0.5);
-
-const trackFX = [...Array(8)].map(() => {
-    const reverb = ctx.createConvolver(); reverb.buffer = impulseBuffer;
-    const reverbSend = ctx.createGain(); reverbSend.gain.value = 0;
-    reverbSend.connect(reverb).connect(masterGain);
-
-    const delay = ctx.createDelay(1.0); const delayFb = ctx.createGain();
-    const delaySend = ctx.createGain(); delaySend.gain.value = 0;
-    delaySend.connect(delay); delay.connect(delayFb).connect(delay);
-    delay.connect(masterGain);
-    return { reverbSend, delay, delayFb, delaySend };
-});
-
-function triggerVoice(track, trackIndex, when=ctx.currentTime, velocityOverride = null){
-  const p=track.params;
-  const velocity = (velocityOverride || p.steps[step % 16] || p.velocity) / 127;
-  const vGain=ctx.createGain();
-
-  const mg = p.muteGroup;
-  if (mg > 0) {
-      if (activeVoices[mg]) {
-          activeVoices[mg].gain.cancelScheduledValues(when);
-          activeVoices[mg].gain.setValueAtTime(activeVoices[mg].gain.value, when);
-          activeVoices[mg].gain.linearRampToValueAtTime(0, when + 0.01);
-      }
-      activeVoices[mg] = vGain;
-  }
-
-  const panner=ctx.createStereoPanner(); panner.pan.value=p.pan;
-  const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=p.hp; hp.Q.value=0.7;
-  const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=p.lp; lp.Q.value=p.res;
-  
-  const sources=[];
-  const oscGains = [];
-  for(let i=0;i<2;i++){
-    const oscCfg=p.osc[i];
-    let src;
-    if(oscCfg.wave==='noise'){
-      const b=ctx.createBuffer(1, ctx.sampleRate*2, ctx.sampleRate);
-      const data=b.getChannelData(0); for(let k=0;k<data.length;k++) data[k]=Math.random()*2-1;
-      src=ctx.createBufferSource(); src.buffer=b; src.loop=true;
-    }else{
-      src=ctx.createOscillator(); src.type=oscCfg.wave;
-      const base= 55 * Math.pow(2,(p.pitch1)/12);
-      src.frequency.setValueAtTime(base, when);
-      src.detune.setValueAtTime((i===0 ? p.detune1 : -p.detune1), when);
-      tapeWobbleGain.connect(src.detune);
-    }
-    const g=ctx.createGain();
-    g.gain.value = (i===0 ? (p.blend/100) : (1-p.blend/100));
-    src.connect(g);
-    sources.push(src);
-    oscGains.push(g);
-  }
-  const mix = ctx.createGain();
-  oscGains[0].connect(mix);
-  oscGains[1].connect(mix);
-
-  const lfo = ctx.createOscillator(); lfo.frequency.value = p.lfoRate;
-  const lfoGain = ctx.createGain();
-  lfo.connect(lfoGain);
-  lfo.start(when);
-  
-  switch(p.lfoTarget) {
-      case 'pitch': lfoGain.gain.value = p.lfoDepth * 24; sources.forEach(s => { if(s.frequency) lfoGain.connect(s.frequency); }); break;
-      case 'filter': lfoGain.gain.value = p.lfoDepth * 5000; lfoGain.connect(lp.frequency); break;
-      case 'pan': lfoGain.gain.value = p.lfoDepth; lfoGain.connect(panner.pan); break;
-      case 'blend':
-          lfoGain.gain.value = p.lfoDepth / 100;
-          const blendInverter = ctx.createGain(); blendInverter.gain.value = -1;
-          lfoGain.connect(oscGains[0].gain);
-          lfoGain.connect(blendInverter).connect(oscGains[1].gain);
-          break;
-  }
-
-  const now=when;
-  const a=p.a/1000, h=p.h/1000, d=p.d/1000, s=p.s, r=p.r/1000;
-  vGain.gain.cancelScheduledValues(now);
-  vGain.gain.setValueAtTime(0, now);
-  vGain.gain.linearRampToValueAtTime(velocity, now+a);
-  vGain.gain.setValueAtTime(velocity, now+a+h);
-  vGain.gain.linearRampToValueAtTime(s * velocity, now+a+h+d);
-  vGain.gain.linearRampToValueAtTime(0, now+a+h+d+r);
-
-  mix.connect(hp).connect(lp).connect(vGain).connect(panner).connect(masterGain);
-  const fx = trackFX[trackIndex];
-  panner.connect(fx.reverbSend);
-  panner.connect(fx.delaySend);
-
-  const stopAt=now+a+h+d+r+0.1;
-  sources.forEach(s=>{if(s.start) s.start(now); s.stop(stopAt);});
-  lfo.stop(stopAt);
-  
-  if (mg > 0) {
-      setTimeout(() => { if (activeVoices[mg] === vGain) activeVoices[mg] = null; }, (stopAt - ctx.currentTime) * 1000);
-  }
-}
-
-/* ---------- Model & Presets ---------- */
-const defaultParams=()=>({
-  osc:[{wave:'sine'},{wave:'square'}], pitch1:0, detune1:0, blend:70,
-  lp:12000, hp:30, res:0.7, a:2, h:0, d:80,s:0,r:120, fdecay: 200, pan:0,
-  lfoRate: 5, lfoDepth: 0, lfoTarget: 'pitch', velocity: 100,
-  reverbSend: 0, delaySend: 0, delayTime: 0.25, delayFb: 0.3,
-  muted:false, steps:Array(16).fill(0), name:'New Sound', muteGroup: 0
-});
-
-const soundPresets = [
-    { name: 'Kick 808', pitch1: -12, d: 250, r: 250, lp: 400, blend: 100, osc: [{wave: 'sine'}, {wave: 'sine'}] },
-    { name: 'Kick 909', pitch1: -10, d: 180, r: 180, lp: 800, blend: 80, osc: [{wave: 'triangle'}, {wave: 'noise'}] },
-    { name: 'Kick Hard', pitch1: -14, d: 150, r: 150, lp: 1200, blend: 100, osc: [{wave: 'square'}, {wave: 'sawtooth'}] },
-    { name: 'Snare 808', blend: 20, d: 120, r: 120, hp: 200, lp: 8000, osc: [{wave: 'noise'}, {wave: 'triangle'}] },
-    { name: 'Snare Tight', blend: 30, d: 80, r: 80, hp: 300, lp: 9000, osc: [{wave: 'noise'}, {wave: 'sine'}] },
-    { name: 'Snare LoFi', blend: 10, d: 150, r: 150, hp: 100, lp: 5000, osc: [{wave: 'noise'}, {wave: 'square'}] },
-    { name: 'Hat Closed', pitch1: 12, d: 50, r: 50, hp: 6000, osc: [{wave: 'noise'}, {wave: 'noise'}], muteGroup: 1 },
-    { name: 'Hat Open', pitch1: 12, d: 400, r: 400, hp: 5000, osc: [{wave: 'noise'}, {wave: 'square'}], muteGroup: 1 },
-    { name: 'Hat Crispy', pitch1: 14, d: 60, r: 60, hp: 8000, osc: [{wave: 'noise'}, {wave: 'sawtooth'}], muteGroup: 1 },
-    { name: 'Tom Lo', pitch1: -5, d: 250, r: 250, lp: 1500, osc: [{wave: 'triangle'}, {wave: 'sine'}] },
-    { name: 'Tom Mid', pitch1: 0, d: 200, r: 200, lp: 2000, osc: [{wave: 'triangle'}, {wave: 'sine'}] },
-    { name: 'Tom Hi', pitch1: 5, d: 150, r: 150, lp: 2500, osc: [{wave: 'triangle'}, {wave: 'sine'}] },
-    { name: 'Crash', pitch1: 16, d: 1200, r: 1200, hp: 4000, lp: 15000, osc: [{wave: 'noise'}, {wave: 'square'}], blend: 70 },
-    { name: 'Ride', pitch1: 14, d: 800, r: 800, hp: 3000, lp: 18000, osc: [{wave: 'square'}, {wave: 'noise'}], blend: 40 },
-    { name: 'China', pitch1: 18, d: 1000, r: 1000, hp: 2000, lp: 16000, osc: [{wave: 'sawtooth'}, {wave: 'noise'}], blend: 60 },
-    { name: 'Clap', blend: 50, d: 90, r: 90, hp: 1000, lp: 9000, osc: [{wave: 'noise'}, {wave: 'noise'}] },
-    { name: 'Rimshot', pitch1: 12, d: 60, r: 60, lp: 4000, hp: 1000, osc: [{wave: 'square'}, {wave: 'square'}] },
-    { name: 'Cowbell', pitch1: 7, detune1: 25, d: 150, r: 150, lp: 10000, osc: [{wave: 'square'}, {wave: 'square'}], blend: 50 },
-    { name: 'Zap', pitch1: -12, d: 200, r: 200, lp: 2000, res: 15, osc: [{wave: 'sawtooth'}, {wave: 'sawtooth'}] },
-    { name: 'Blip', pitch1: 12, d: 30, r: 30, lp: 3000, res: 5, osc: [{wave: 'triangle'}, {wave: 'triangle'}] },
-    { name: 'Laser', pitch1: 24, d: 300, r: 300, lp: 10000, res: 2, osc: [{wave: 'sawtooth'}, {wave: 'sine'}] }
-];
-
-const waveTypes = ['sine', 'square', 'triangle', 'sawtooth', 'noise'];
-let currentPresetIndex = 0;
-let tracks = [];
-let initialKit = [];
-let motionData = { hp: [], lp: [] };
-
-function initTracksWithKit() {
-    const defaultKitSetup = [
-        soundPresets[0], soundPresets[3], soundPresets[6], soundPresets[7],
-        soundPresets[9], soundPresets[10], soundPresets[11], soundPresets[12]
-    ];
-    initialKit = defaultKitSetup.map(p => ({ ...defaultParams(), ...p }));
-    tracks = initialKit.map(p => ({ params: JSON.parse(JSON.stringify(p)) }));
-    currentTrack = 0;
-    applyParamsToUI();
-    renderTracks();
-    highlightSteps();
-}
-
-/* ---------- UI Management ---------- */
-const tracksDiv=document.getElementById('tracks');
-const seqDiv=document.getElementById('seq');
-const uiKnobs = {};
-document.querySelectorAll('.knob').forEach(k => { uiKnobs[k.dataset.id] = k.querySelector('input'); });
-
-function applyParamsToUI() {
-    if (!tracks.length) return;
-    const p = tracks[currentTrack].params;
-    for (const key in p) {
-        if (uiKnobs[key]) {
-            uiKnobs[key].value = p[key];
-            uiKnobs[key].dispatchEvent(new Event('input'));
+    const mg = p.muteGroup;
+    if (mg > 0) {
+        if (activeVoices[mg]) {
+            activeVoices[mg].gain.cancelScheduledValues(when);
+            activeVoices[mg].gain.setValueAtTime(activeVoices[mg].gain.value, when);
+            activeVoices[mg].gain.linearRampToValueAtTime(0, when + 0.01);
         }
+        activeVoices[mg] = vGain;
     }
-    const currentOsc = document.querySelector('.oscTab.active').dataset.osc;
-    document.getElementById('waveName').textContent = p.osc[currentOsc].wave;
+
+    const panner=ctx.createStereoPanner(); panner.pan.value=p.pan;
+    const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=p.hp; hp.Q.value=0.7;
+    const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=p.lp; lp.Q.value=p.res;
+    
+    const sources=[];
+    const oscGains = [];
+    for(let i=0;i<2;i++){
+        const oscCfg=p.osc[i];
+        let src;
+        if(oscCfg.wave==='noise'){
+        const b=ctx.createBuffer(1, ctx.sampleRate*2, ctx.sampleRate);
+        const data=b.getChannelData(0); for(let k=0;k<data.length;k++) data[k]=Math.random()*2-1;
+        src=ctx.createBufferSource(); src.buffer=b; src.loop=true;
+        }else{
+        src=ctx.createOscillator(); src.type=oscCfg.wave;
+        const base= 55 * Math.pow(2,(p.pitch1)/12);
+        src.frequency.setValueAtTime(base, when);
+        src.detune.setValueAtTime((i===0 ? p.detune1 : -p.detune1), when);
+        tapeWobbleGain.connect(src.detune);
+        }
+        const g=ctx.createGain();
+        g.gain.value = (i===0 ? (p.blend/100) : (1-p.blend/100));
+        src.connect(g);
+        sources.push(src);
+        oscGains.push(g);
+    }
+    const mix = ctx.createGain();
+    oscGains[0].connect(mix);
+    oscGains[1].connect(mix);
+
+    const lfo = ctx.createOscillator(); lfo.frequency.value = p.lfoRate;
+    const lfoGain = ctx.createGain();
+    lfo.connect(lfoGain);
+    lfo.start(when);
+    
+    switch(p.lfoTarget) {
+        case 'pitch': lfoGain.gain.value = p.lfoDepth * 24; sources.forEach(s => { if(s.frequency) lfoGain.connect(s.frequency); }); break;
+        case 'filter': lfoGain.gain.value = p.lfoDepth * 5000; lfoGain.connect(lp.frequency); break;
+        case 'pan': lfoGain.gain.value = p.lfoDepth; lfoGain.connect(panner.pan); break;
+        case 'blend':
+            lfoGain.gain.value = p.lfoDepth / 100;
+            const blendInverter = ctx.createGain(); blendInverter.gain.value = -1;
+            lfoGain.connect(oscGains[0].gain);
+            lfoGain.connect(blendInverter).connect(oscGains[1].gain);
+            break;
+    }
+
+    const now=when;
+    const a=p.a/1000, h=p.h/1000, d=p.d/1000, s=p.s, r=p.r/1000;
+    vGain.gain.cancelScheduledValues(now);
+    vGain.gain.setValueAtTime(0, now);
+    vGain.gain.linearRampToValueAtTime(velocity, now+a);
+    vGain.gain.setValueAtTime(velocity, now+a+h);
+    vGain.gain.linearRampToValueAtTime(s * velocity, now+a+h+d);
+    vGain.gain.linearRampToValueAtTime(0, now+a+h+d+r);
+
+    mix.connect(hp).connect(lp).connect(vGain).connect(panner).connect(masterGain);
+    const fx = trackFX[trackIndex];
+    panner.connect(fx.reverbSend);
+    panner.connect(fx.delaySend);
+
+    const stopAt=now+a+h+d+r+0.1;
+    sources.forEach(s=>{if(s.start) s.start(now); s.stop(stopAt);});
+    lfo.stop(stopAt);
+    
+    if (mg > 0) {
+        setTimeout(() => { if (activeVoices[mg] === vGain) activeVoices[mg] = null; }, (stopAt - ctx.currentTime) * 1000);
+    }
+    }
+
+    /* ---------- Model & Presets ---------- */
+    const defaultParams=()=>({
+    osc:[{wave:'sine'},{wave:'square'}], pitch1:0, detune1:0, blend:70,
+    lp:12000, hp:30, res:0.7, a:2, h:0, d:80,s:0,r:120, fdecay: 200, pan:0,
+    lfoRate: 5, lfoDepth: 0, lfoTarget: 'pitch', velocity: 100,
+    reverbSend: 0, delaySend: 0, delayTime: 0.25, delayFb: 0.3,
+    muted:false, steps:Array(16).fill(0), name:'New Sound', muteGroup: 0
+    });
+
+    const soundPresets = [
+        { name: 'Kick 808', pitch1: -12, d: 250, r: 250, lp: 400, blend: 100, osc: [{wave: 'sine'}, {wave: 'sine'}] },
+        { name: 'Kick 909', pitch1: -10, d: 180, r: 180, lp: 800, blend: 80, osc: [{wave: 'triangle'}, {wave: 'noise'}] },
+        { name: 'Kick Hard', pitch1: -14, d: 150, r: 150, lp: 1200, blend: 100, osc: [{wave: 'square'}, {wave: 'sawtooth'}] },
+        { name: 'Snare 808', blend: 20, d: 120, r: 120, hp: 200, lp: 8000, osc: [{wave: 'noise'}, {wave: 'triangle'}] },
+        { name: 'Snare Tight', blend: 30, d: 80, r: 80, hp: 300, lp: 9000, osc: [{wave: 'noise'}, {wave: 'sine'}] },
+        { name: 'Snare LoFi', blend: 10, d: 150, r: 150, hp: 100, lp: 5000, osc: [{wave: 'noise'}, {wave: 'square'}] },
+        { name: 'Hat Closed', pitch1: 12, d: 50, r: 50, hp: 6000, osc: [{wave: 'noise'}, {wave: 'noise'}], muteGroup: 1 },
+        { name: 'Hat Open', pitch1: 12, d: 400, r: 400, hp: 5000, osc: [{wave: 'noise'}, {wave: 'square'}], muteGroup: 1 },
+        { name: 'Hat Crispy', pitch1: 14, d: 60, r: 60, hp: 8000, osc: [{wave: 'noise'}, {wave: 'sawtooth'}], muteGroup: 1 },
+        { name: 'Tom Lo', pitch1: -5, d: 250, r: 250, lp: 1500, osc: [{wave: 'triangle'}, {wave: 'sine'}] },
+        { name: 'Tom Mid', pitch1: 0, d: 200, r: 200, lp: 2000, osc: [{wave: 'triangle'}, {wave: 'sine'}] },
+        { name: 'Tom Hi', pitch1: 5, d: 150, r: 150, lp: 2500, osc: [{wave: 'triangle'}, {wave: 'sine'}] },
+        { name: 'Crash', pitch1: 16, d: 1200, r: 1200, hp: 4000, lp: 15000, osc: [{wave: 'noise'}, {wave: 'square'}], blend: 70 },
+        { name: 'Ride', pitch1: 14, d: 800, r: 800, hp: 3000, lp: 18000, osc: [{wave: 'square'}, {wave: 'noise'}], blend: 40 },
+        { name: 'China', pitch1: 18, d: 1000, r: 1000, hp: 2000, lp: 16000, osc: [{wave: 'sawtooth'}, {wave: 'noise'}], blend: 60 },
+        { name: 'Clap', blend: 50, d: 90, r: 90, hp: 1000, lp: 9000, osc: [{wave: 'noise'}, {wave: 'noise'}] },
+        { name: 'Rimshot', pitch1: 12, d: 60, r: 60, lp: 4000, hp: 1000, osc: [{wave: 'square'}, {wave: 'square'}] },
+        { name: 'Cowbell', pitch1: 7, detune1: 25, d: 150, r: 150, lp: 10000, osc: [{wave: 'square'}, {wave: 'square'}], blend: 50 },
+        { name: 'Zap', pitch1: -12, d: 200, r: 200, lp: 2000, res: 15, osc: [{wave: 'sawtooth'}, {wave: 'sawtooth'}] },
+        { name: 'Blip', pitch1: 12, d: 30, r: 30, lp: 3000, res: 5, osc: [{wave: 'triangle'}, {wave: 'triangle'}] },
+        { name: 'Laser', pitch1: 24, d: 300, r: 300, lp: 10000, res: 2, osc: [{wave: 'sawtooth'}, {wave: 'sine'}] }
+    ];
+
+    const waveTypes = ['sine', 'square', 'triangle', 'sawtooth', 'noise'];
+    let currentPresetIndex = 0;
+    let tracks = [];
+    let initialKit = [];
+    let motionData = { hp: [], lp: [] };
+
+    function initTracksWithKit() {
+        const defaultKitSetup = [
+            soundPresets[0], soundPresets[3], soundPresets[6], soundPresets[7],
+            soundPresets[9], soundPresets[10], soundPresets[11], soundPresets[12]
+        ];
+        initialKit = defaultKitSetup.map(p => ({ ...defaultParams(), ...p }));
+        tracks = initialKit.map(p => ({ params: JSON.parse(JSON.stringify(p)) }));
+        currentTrack = 0;
+        applyParamsToUI();
+        renderTracks();
+        highlightSteps();
+    }
+
+    /* ---------- UI Management ---------- */
+    const tracksDiv=document.getElementById('tracks');
+    const seqDiv=document.getElementById('seq');
+    const uiKnobs = {};
+    document.querySelectorAll('.knob').forEach(k => { uiKnobs[k.dataset.id] = k.querySelector('input'); });
+
+    function applyParamsToUI() {
+        if (!tracks.length) return;
+        const p = tracks[currentTrack].params;
+        for (const key in p) {
+            if (uiKnobs[key]) {
+                uiKnobs[key].value = p[key];
+                uiKnobs[key].dispatchEvent(new Event('input'));
+            }
+        }
+        const currentOsc = document.querySelector('.oscTab.active').dataset.osc;
+        document.getElementById('waveName').textContent = p.osc[currentOsc].wave;
+        document.querySelectorAll('#muteGroupSel button').forEach(b => {
+            b.classList.toggle('sel', +b.dataset.group === p.muteGroup);
+        });
+        document.querySelectorAll('#lfoTargetSel button').forEach(b => {
+            b.classList.toggle('sel', b.dataset.target === p.lfoTarget);
+        });
+        document.getElementById('presetName').textContent = p.name;
+    }
+
+    function updateParamFromUI(param, value) {
+        const p = tracks[currentTrack].params;
+        p[param] = value;
+        const fx = trackFX[currentTrack];
+        if (param === 'reverbSend') fx.reverbSend.gain.value = value;
+        if (param === 'delaySend') fx.delaySend.gain.value = value;
+        if (param === 'delayTime') fx.delay.delayTime.value = value;
+        if (param === 'delayFb') fx.delayFb.gain.value = value;
+    }
+
+    function renderTracks(){
+    tracksDiv.innerHTML='';
+    tracks.forEach((t,i)=>{
+        const el=document.createElement('div');
+        el.className='trk-pad';
+        el.classList.toggle('active', i === currentTrack);
+        el.classList.toggle('muted', t.params.muted);
+        el.innerHTML=`<div class="track-name">${t.params.name}</div><button class="mute-btn">M</button>`;
+        el.addEventListener('click', e => {
+        if (e.target.classList.contains('mute-btn')) {
+            t.params.muted = !t.params.muted;
+            renderTracks();
+            return;
+        }
+        if (isRolling) return;
+        currentTrack=i;
+        applyParamsToUI();
+        renderTracks();
+        highlightSteps();
+        });
+        el.addEventListener('mousedown', e => {
+            if (isRolling && !e.target.classList.contains('mute-btn')) {
+                triggerVoice(t, i, ctx.currentTime, 127);
+            }
+        });
+        tracksDiv.appendChild(el);
+    });
+    }
+
+    function renderSeq(){
+    seqDiv.innerHTML='';
+    for(let i=0;i<16;i++){
+        const pad=document.createElement('div'); pad.className='pad';
+        pad.innerHTML=`<small>${i+1}</small>`;
+        pad.addEventListener('click',()=>{
+        const st=tracks[currentTrack].params.steps;
+        const vel = tracks[currentTrack].params.velocity;
+        st[i] = st[i] > 0 ? 0 : vel;
+        highlightSteps();
+        });
+        seqDiv.appendChild(pad);
+    }
+    highlightSteps();
+    }
+    function highlightSteps(){
+    if (!tracks.length) return;
+    const st=tracks[currentTrack].params.steps;
+    [...seqDiv.children].forEach((p,i)=>{
+        const vel = st[i];
+        p.classList.toggle('on', vel > 0);
+        p.style.opacity = vel > 0 ? (vel / 127) * 0.7 + 0.3 : 1;
+    });
+    }
+
+    /* ---------- Transport / clock ---------- */
+    let isPlaying=false, isReversed=false, step=0, lastTick=0, swing=0, timer=0;
+    let isRolling = false, rollRate = 1;
+    const rollRates = [4, 8, 16]; // 8th, 16th, 32nd
+    let isFxRec = false;
+
+    function schedule(){
+    const bpm=+document.getElementById('bpm').value;
+    const spb=60/bpm; const stepDur=spb/4;
+    const swingAmt = (swing / 100) * stepDur * 0.5;
+    const now=ctx.currentTime;
+
+    while(lastTick < now + 0.1){
+        const absoluteStep = step % 16;
+        const seqPos = isReversed ? 15 - absoluteStep : absoluteStep;
+
+        const timeAt = lastTick + ((step % 2) ? swingAmt : -swingAmt);
+        tracks.forEach((t,ti)=>{
+        if(!t.params.muted && t.params.steps[seqPos]) triggerVoice(t, ti, timeAt + stepDur);
+        });
+
+        if (motionData.hp[absoluteStep] !== undefined) masterHP.frequency.setTargetAtTime(motionData.hp[absoluteStep], timeAt + stepDur, 0.01);
+        if (motionData.lp[absoluteStep] !== undefined) masterLP.frequency.setTargetAtTime(motionData.lp[absoluteStep], timeAt + stepDur, 0.01);
+
+        setTimeout(()=>{
+        const pads=[...seqDiv.children];
+        pads.forEach(p=>p.classList.remove('playing'));
+        pads[seqPos].classList.add('playing');
+        }, (timeAt - now + stepDur)*1000);
+
+        lastTick += stepDur;
+        step++;
+    }
+    if(isPlaying) timer=requestAnimationFrame(schedule);
+    }
+
+    document.getElementById('playBtn').addEventListener('click',()=>{
+    ctx.resume();
+    if(!isPlaying){
+        isPlaying=true; step=0; lastTick=ctx.currentTime; schedule();
+        playBtn.textContent='Pause';
+    } else {
+        isPlaying = false;
+        cancelAnimationFrame(timer);
+        playBtn.textContent='Play';
+    }
+    });
+
+    document.getElementById('stopBtn').addEventListener('click', () => {
+        isPlaying = false; cancelAnimationFrame(timer); step = 0;
+        [...seqDiv.children].forEach(p => p.classList.remove('playing'));
+        document.getElementById('playBtn').textContent='Play';
+    });
+
+    document.getElementById('reverseBtn').addEventListener('click', (e) => {
+        isReversed = !isReversed; e.target.classList.toggle('active', isReversed);
+    });
+
+    const rollBtn = document.getElementById('rollBtn');
+    rollBtn.addEventListener('mousedown', () => isRolling = true);
+    rollBtn.addEventListener('mouseup', () => isRolling = false);
+    rollBtn.addEventListener('mouseleave', () => isRolling = false);
+
+    const fxRecBtn = document.getElementById('fxRecBtn');
+    fxRecBtn.addEventListener('click', (e) => {
+        if (e.shiftKey) {
+            motionData = { hp: [], lp: [] };
+            return;
+        }
+        isFxRec = !isFxRec;
+        fxRecBtn.classList.toggle('active', isFxRec);
+        if (isFxRec) motionData = { hp: [], lp: [] };
+    });
+
+
+    /* ---------- Event Listeners for Controls ---------- */
+    uiKnobs.swing.addEventListener('input', e => swing = +e.target.value);
+    uiKnobs.gvol.addEventListener('input', e => masterGain.gain.value = +e.target.value / 100);
+    uiKnobs.drive.addEventListener('input', e => setDrive(+e.target.value / 100));
+    uiKnobs.tape.addEventListener('input', e => setTape(+e.target.value));
+    uiKnobs.masterHP.addEventListener('input', e => {
+        masterHP.frequency.setTargetAtTime(+e.target.value, ctx.currentTime, 0.01);
+        if (isFxRec && isPlaying) motionData.hp[step % 16] = +e.target.value;
+    });
+    uiKnobs.masterLP.addEventListener('input', e => {
+        masterLP.frequency.setTargetAtTime(+e.target.value, ctx.currentTime, 0.01);
+        if (isFxRec && isPlaying) motionData.lp[step % 16] = +e.target.value;
+    });
+    uiKnobs.rollRate.addEventListener('input', e => rollRate = +e.target.value);
+
+
+    Object.keys(uiKnobs).forEach(key => {
+        if (['swing', 'gvol', 'drive', 'tape', 'masterHP', 'masterLP', 'rollRate'].includes(key)) return;
+        uiKnobs[key].addEventListener('input', e => {
+            updateParamFromUI(key, e.target.type === 'range' ? +e.target.value : e.target.value);
+        });
+    });
+
+    document.querySelectorAll('.oscTab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelector('.oscTab.active').classList.remove('active');
+            tab.classList.add('active');
+            applyParamsToUI();
+        });
+    });
+    document.getElementById('nextWave').addEventListener('click', () => {
+        const p = tracks[currentTrack].params;
+        const currentOsc = document.querySelector('.oscTab.active').dataset.osc;
+        const currentWave = p.osc[currentOsc].wave;
+        const currentIndex = waveTypes.indexOf(currentWave);
+        const nextIndex = (currentIndex + 1) % waveTypes.length;
+        p.osc[currentOsc].wave = waveTypes[nextIndex];
+        applyParamsToUI();
+    });
     document.querySelectorAll('#muteGroupSel button').forEach(b => {
-        b.classList.toggle('sel', +b.dataset.group === p.muteGroup);
+        b.addEventListener('click', () => {
+            tracks[currentTrack].params.muteGroup = +b.dataset.group;
+            applyParamsToUI();
+        });
     });
     document.querySelectorAll('#lfoTargetSel button').forEach(b => {
-        b.classList.toggle('sel', b.dataset.target === p.lfoTarget);
+        b.addEventListener('click', () => {
+            tracks[currentTrack].params.lfoTarget = b.dataset.target;
+            applyParamsToUI();
+        });
     });
-    document.getElementById('trackName').textContent = p.name;
-    document.getElementById('presetName').textContent = p.name;
-}
 
-function updateParamFromUI(param, value) {
-    const p = tracks[currentTrack].params;
-    p[param] = value;
-    const fx = trackFX[currentTrack];
-    if (param === 'reverbSend') fx.reverbSend.gain.value = value;
-    if (param === 'delaySend') fx.delaySend.gain.value = value;
-    if (param === 'delayTime') fx.delay.delayTime.value = value;
-    if (param === 'delayFb') fx.delayFb.gain.value = value;
-}
-
-function renderTracks(){
-  tracksDiv.innerHTML='';
-  tracks.forEach((t,i)=>{
-    const el=document.createElement('div');
-    el.className='trk-pad';
-    el.classList.toggle('active', i === currentTrack);
-    el.classList.toggle('muted', t.params.muted);
-    el.innerHTML=`<div class="track-name">${t.params.name}</div><button class="mute-btn">M</button>`;
-    el.addEventListener('click', e => {
-      if (e.target.classList.contains('mute-btn')) {
-        t.params.muted = !t.params.muted;
+    function loadSoundPreset(direction) {
+        currentPresetIndex = (currentPresetIndex + direction + soundPresets.length) % soundPresets.length;
+        const newPreset = soundPresets[currentPresetIndex];
+        const oldParams = tracks[currentTrack].params;
+        let newMuteGroup = newPreset.muteGroup !== undefined ? newPreset.muteGroup : oldParams.muteGroup;
+        tracks[currentTrack].params = { ...defaultParams(), ...newPreset, steps: oldParams.steps, muted: oldParams.muted, muteGroup: newMuteGroup };
+        applyParamsToUI();
         renderTracks();
-        return;
-      }
-      if (isRolling) return;
-      currentTrack=i;
-      applyParamsToUI();
-      renderTracks();
-      highlightSteps();
-    });
-    el.addEventListener('mousedown', e => {
-        if (isRolling && !e.target.classList.contains('mute-btn')) {
-            triggerVoice(t, i, ctx.currentTime, 127);
-        }
-    });
-    tracksDiv.appendChild(el);
-  });
-}
-
-function renderSeq(){
-  seqDiv.innerHTML='';
-  for(let i=0;i<16;i++){
-    const pad=document.createElement('div'); pad.className='pad';
-    pad.innerHTML=`<small>${i+1}</small>`;
-    pad.addEventListener('click',()=>{
-      const st=tracks[currentTrack].params.steps;
-      const vel = tracks[currentTrack].params.velocity;
-      st[i] = st[i] > 0 ? 0 : vel;
-      highlightSteps();
-    });
-    seqDiv.appendChild(pad);
-  }
-  highlightSteps();
-}
-function highlightSteps(){
-  if (!tracks.length) return;
-  const st=tracks[currentTrack].params.steps;
-  [...seqDiv.children].forEach((p,i)=>{
-      const vel = st[i];
-      p.classList.toggle('on', vel > 0);
-      p.style.opacity = vel > 0 ? (vel / 127) * 0.7 + 0.3 : 1;
-  });
-}
-
-/* ---------- Transport / clock ---------- */
-let isPlaying=false, isReversed=false, step=0, lastTick=0, swing=0, timer=0;
-let isRolling = false, rollRate = 1;
-const rollRates = [4, 8, 16]; // 8th, 16th, 32nd
-let isFxRec = false;
-
-function schedule(){
-  const bpm=+document.getElementById('bpm').value;
-  const spb=60/bpm; const stepDur=spb/4;
-  const swingAmt = (swing / 100) * stepDur * 0.5;
-  const now=ctx.currentTime;
-
-  while(lastTick < now + 0.1){
-    const absoluteStep = step % 16;
-    const seqPos = isReversed ? 15 - absoluteStep : absoluteStep;
-
-    const timeAt = lastTick + ((step % 2) ? swingAmt : -swingAmt);
-    tracks.forEach((t,ti)=>{
-      if(!t.params.muted && t.params.steps[seqPos]) triggerVoice(t, ti, timeAt + stepDur);
-    });
-
-    if (motionData.hp[absoluteStep] !== undefined) masterHP.frequency.setTargetAtTime(motionData.hp[absoluteStep], timeAt + stepDur, 0.01);
-    if (motionData.lp[absoluteStep] !== undefined) masterLP.frequency.setTargetAtTime(motionData.lp[absoluteStep], timeAt + stepDur, 0.01);
-
-    setTimeout(()=>{
-      const pads=[...seqDiv.children];
-      pads.forEach(p=>p.classList.remove('playing'));
-      pads[seqPos].classList.add('playing');
-    }, (timeAt - now + stepDur)*1000);
-
-    lastTick += stepDur;
-    step++;
-  }
-  if(isPlaying) timer=requestAnimationFrame(schedule);
-}
-
-document.getElementById('playBtn').addEventListener('click',()=>{
-  ctx.resume();
-  if(!isPlaying){
-    isPlaying=true; step=0; lastTick=ctx.currentTime; schedule();
-    playBtn.textContent='Pause';
-  } else {
-    isPlaying = false;
-    cancelAnimationFrame(timer);
-    playBtn.textContent='Play';
-  }
-});
-
-document.getElementById('stopBtn').addEventListener('click', () => {
-    isPlaying = false; cancelAnimationFrame(timer); step = 0;
-    [...seqDiv.children].forEach(p => p.classList.remove('playing'));
-    document.getElementById('playBtn').textContent='Play';
-});
-
-document.getElementById('reverseBtn').addEventListener('click', (e) => {
-    isReversed = !isReversed; e.target.classList.toggle('active', isReversed);
-});
-
-const rollBtn = document.getElementById('rollBtn');
-rollBtn.addEventListener('mousedown', () => isRolling = true);
-rollBtn.addEventListener('mouseup', () => isRolling = false);
-rollBtn.addEventListener('mouseleave', () => isRolling = false);
-
-const fxRecBtn = document.getElementById('fxRecBtn');
-fxRecBtn.addEventListener('click', (e) => {
-    if (e.shiftKey) {
-        motionData = { hp: [], lp: [] };
-        return;
     }
-    isFxRec = !isFxRec;
-    fxRecBtn.classList.toggle('active', isFxRec);
-    if (isFxRec) motionData = { hp: [], lp: [] };
-});
 
+    document.getElementById('nextPreset').addEventListener('click', () => loadSoundPreset(1));
+    document.getElementById('prevPreset').addEventListener('click', () => loadSoundPreset(-1));
 
-/* ---------- Event Listeners for Controls ---------- */
-uiKnobs.swing.addEventListener('input', e => swing = +e.target.value);
-uiKnobs.gvol.addEventListener('input', e => masterGain.gain.value = +e.target.value / 100);
-uiKnobs.drive.addEventListener('input', e => setDrive(+e.target.value / 100));
-uiKnobs.tape.addEventListener('input', e => setTape(+e.target.value));
-uiKnobs.masterHP.addEventListener('input', e => {
-    masterHP.frequency.setTargetAtTime(+e.target.value, ctx.currentTime, 0.01);
-    if (isFxRec && isPlaying) motionData.hp[step % 16] = +e.target.value;
-});
-uiKnobs.masterLP.addEventListener('input', e => {
-    masterLP.frequency.setTargetAtTime(+e.target.value, ctx.currentTime, 0.01);
-    if (isFxRec && isPlaying) motionData.lp[step % 16] = +e.target.value;
-});
-uiKnobs.rollRate.addEventListener('input', e => rollRate = +e.target.value);
-
-
-Object.keys(uiKnobs).forEach(key => {
-    if (['swing', 'gvol', 'drive', 'tape', 'masterHP', 'masterLP', 'rollRate'].includes(key)) return;
-    uiKnobs[key].addEventListener('input', e => {
-        updateParamFromUI(key, e.target.type === 'range' ? +e.target.value : e.target.value);
-    });
-});
-
-document.querySelectorAll('.oscTab').forEach(tab => {
-    tab.addEventListener('click', () => {
-        document.querySelector('.oscTab.active').classList.remove('active');
-        tab.classList.add('active');
+    document.getElementById('resetBtn').addEventListener('click', () => {
+        const originalParams = initialKit[currentTrack];
+        const oldSteps = tracks[currentTrack].params.steps;
+        const oldMuted = tracks[currentTrack].params.muted;
+        tracks[currentTrack].params = { ...JSON.parse(JSON.stringify(originalParams)), steps: oldSteps, muted: oldMuted };
         applyParamsToUI();
+        renderTracks();
     });
-});
-document.getElementById('nextWave').addEventListener('click', () => {
-    const p = tracks[currentTrack].params;
-    const currentOsc = document.querySelector('.oscTab.active').dataset.osc;
-    const currentWave = p.osc[currentOsc].wave;
-    const currentIndex = waveTypes.indexOf(currentWave);
-    const nextIndex = (currentIndex + 1) % waveTypes.length;
-    p.osc[currentOsc].wave = waveTypes[nextIndex];
-    applyParamsToUI();
-});
-document.querySelectorAll('#muteGroupSel button').forEach(b => {
-    b.addEventListener('click', () => {
-        tracks[currentTrack].params.muteGroup = +b.dataset.group;
-        applyParamsToUI();
+
+    document.getElementById('audition').addEventListener('click', () => {
+        ctx.resume(); 
+        const p = tracks[currentTrack].params;
+        const tempTrack = { params: {...p, steps: [p.velocity]} };
+        triggerVoice(tempTrack, currentTrack, ctx.currentTime, 127);
     });
-});
-document.querySelectorAll('#lfoTargetSel button').forEach(b => {
-    b.addEventListener('click', () => {
-        tracks[currentTrack].params.lfoTarget = b.dataset.target;
-        applyParamsToUI();
-    });
-});
 
-function loadSoundPreset(direction) {
-    currentPresetIndex = (currentPresetIndex + direction + soundPresets.length) % soundPresets.length;
-    const newPreset = soundPresets[currentPresetIndex];
-    const oldParams = tracks[currentTrack].params;
-    let newMuteGroup = newPreset.muteGroup !== undefined ? newPreset.muteGroup : oldParams.muteGroup;
-    tracks[currentTrack].params = { ...defaultParams(), ...newPreset, steps: oldParams.steps, muted: oldParams.muted, muteGroup: newMuteGroup };
-    applyParamsToUI();
-    renderTracks();
-}
+    // Initial Load
+    initTracksWithKit();
+    renderSeq();
 
-document.getElementById('nextPreset').addEventListener('click', () => loadSoundPreset(1));
-document.getElementById('prevPreset').addEventListener('click', () => loadSoundPreset(-1));
-
-document.getElementById('resetBtn').addEventListener('click', () => {
-    const originalParams = initialKit[currentTrack];
-    const oldSteps = tracks[currentTrack].params.steps;
-    const oldMuted = tracks[currentTrack].params.muted;
-    tracks[currentTrack].params = { ...JSON.parse(JSON.stringify(originalParams)), steps: oldSteps, muted: oldMuted };
-    applyParamsToUI();
-    renderTracks();
-});
-
-document.getElementById('audition').addEventListener('click', () => {
-    ctx.resume(); 
-    const p = tracks[currentTrack].params;
-    const tempTrack = { params: {...p, steps: [p.velocity]} };
-    triggerVoice(tempTrack, currentTrack, ctx.currentTime, 127);
-});
-
-// Initial Load
-initTracksWithKit();
-renderSeq();
-
-// Roll interval
-setInterval(() => {
-    if (isRolling) {
-        const activeTrack = document.querySelector('.trk-pad.active');
-        if (activeTrack) {
-            const trackIndex = [...activeTrack.parentElement.children].indexOf(activeTrack);
-            const bpm = +document.getElementById('bpm').value;
-            const rate = rollRates[rollRate];
-            const interval = 60000 / (bpm * (rate / 4));
-            triggerVoice(tracks[trackIndex], trackIndex, ctx.currentTime, 127);
+    // Roll interval
+    setInterval(() => {
+        if (isRolling) {
+            const activeTrack = document.querySelector('.trk-pad.active');
+            if (activeTrack) {
+                const trackIndex = [...activeTrack.parentElement.children].indexOf(activeTrack);
+                const bpm = +document.getElementById('bpm').value;
+                const rate = rollRates[rollRate];
+                const interval = 60000 / (bpm * (rate / 4));
+                triggerVoice(tracks[trackIndex], trackIndex, ctx.currentTime, 127);
+            }
         }
-    }
-}, 50); // Check frequently for roll state
-
-
+    }, 50); // Check frequently for roll state
+});
 </script>
 </body>
 </html>
