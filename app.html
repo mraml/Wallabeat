@@ -12,7 +12,7 @@
   }
   *{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
   html,body{margin:0;background:radial-gradient(1200px 600px at 70% -200px,#162235 0%,#0f1722 60%);color:var(--fg)}
-  .wrap{max-width:1100px;margin:24px auto 80px;padding:0 16px}
+  .wrap{max-width:1200px;margin:24px auto 80px;padding:0 16px}
   header{
     display:flex;align-items:center;gap:16px;margin-bottom:16px; flex-wrap: wrap;
   }
@@ -30,7 +30,7 @@
   .btn.play{background:linear-gradient(180deg,#26d2ff,#1485ff)}
   .btn.stop{background:linear-gradient(180deg,#ff9a9a,#ff5d5d)}
   .btn.reverse.active{background:var(--accent2); color: var(--bg);}
-  .btn.stutter.active{background:var(--accent); color: var(--bg); transform: translateY(1px);}
+  .btn.fx-rec.active{background:var(--warning); color: var(--bg);}
   .panel{
     background:linear-gradient(180deg,#121b28,#0f1722);border-radius:18px;padding:16px;box-shadow:var(--shadow);margin:12px 0
   }
@@ -99,8 +99,7 @@
   .miniSel button{background:#21304b;border:0;color:#cde4ff;border-radius:12px;padding:6px 8px;cursor:pointer}
   .miniSel button.sel{background:#2f4671}
   .help{opacity:.7;font-size:12px}
-  .param-section { display: flex; gap: 16px; margin-top: 16px; }
-  @media(max-width:920px){.param-section{flex-direction: column;}}
+  .param-section { display: flex; gap: 16px; margin-top: 16px; flex-wrap: wrap;}
 </style>
 </head>
 <body>
@@ -115,11 +114,14 @@
     <div class="hdr-knobs knobrow">
       <div class="kwrap"><div class="knob" data-id="swing"><span class="dot"></span><input type="range" min="0" max="100" value="0"></div><div class="tag">Swing</div></div>
       <div class="kwrap"><div class="knob" data-id="gvol"><span class="dot"></span><input type="range" min="0" max="100" value="80"></div><div class="tag">Master Vol</div></div>
-      <div class="kwrap"><div class="knob" data-id="drive"><span class="dot"></span><input type="range" min="0" max="100" value="10"></div><div class="tag">Overdrive</div></div>
-      <div class="kwrap"><div class="knob" data-id="comp"><span class="dot"></span><input type="range" min="0" max="100" value="20"></div><div class="tag">Compression</div></div>
-      <div class="kwrap"><div class="knob" data-id="stutterRate"><span class="dot"></span><input type="range" min="0" max="4" value="0" step="1"></div><div class="tag">Stutter Rate</div></div>
+      <div class="kwrap"><div class="knob" data-id="drive"><span class="dot"></span><input type="range" min="0" max="100" value="10"></div><div class="tag">Drive</div></div>
+      <div class="kwrap"><div class="knob" data-id="tape"><span class="dot"></span><input type="range" min="0" max="100" value="0"></div><div class="tag">Tape/Vinyl</div></div>
+      <div class="kwrap"><div class="knob" data-id="masterHP"><span class="dot"></span><input type="range" min="20" max="10000" value="20"></div><div class="tag">Master HPF</div></div>
+      <div class="kwrap"><div class="knob" data-id="masterLP"><span class="dot"></span><input type="range" min="100" max="20000" value="20000"></div><div class="tag">Master LPF</div></div>
+      <div class="kwrap"><div class="knob" data-id="rollRate"><span class="dot"></span><input type="range" min="0" max="2" value="1" step="1"></div><div class="tag">Roll Rate</div></div>
     </div>
-    <button id="stutterBtn" class="btn stutter">Stutter</button>
+    <button id="rollBtn" class="btn">Roll</button>
+    <button id="fxRecBtn" class="btn fx-rec">FX REC</button>
     <button id="playBtn" class="btn play">Play</button>
     <button id="stopBtn" class="btn stop">Stop</button>
     <button id="reverseBtn" class="btn reverse">Reverse</button>
@@ -148,7 +150,7 @@
 
     <div class="param-section">
         <!-- OSCILLATORS -->
-        <div class="block" style="flex: 1.2;">
+        <div class="block" style="flex: 1.5;">
             <div class="row" style="gap:18px; justify-content: center;">
                 <div style="display:flex;gap:10px;align-items:center">
                     <div class="tabs">
@@ -172,21 +174,42 @@
             <div class="label">Oscillators</div>
         </div>
         <!-- FILTER & ENV -->
-        <div class="block" style="flex: 2;">
+        <div class="block" style="flex: 2.5;">
             <div class="row knobrow" style="justify-content: center;">
                 <div class="kwrap"><div class="knob" data-id="lp"><span class="dot"></span><input type="range" min="50" max="20000" value="12000" step="1"></div><div class="tag">LP Cut</div></div>
                 <div class="kwrap"><div class="knob" data-id="hp"><span class="dot"></span><input type="range" min="20" max="2000" value="30" step="1"></div><div class="tag">HP Cut</div></div>
                 <div class="kwrap"><div class="knob" data-id="res"><span class="dot"></span><input type="range" min="0.1" max="20" step="0.1" value="0.7"></div><div class="tag">Res</div></div>
-                <div class="kwrap"><div class="knob" data-id="a"><span class="dot"></span><input type="range" min="0" max="2000" value="2"></div><div class="tag">Attack</div></div>
-                <div class="kwrap"><div class="knob" data-id="d"><span class="dot"></span><input type="range" min="1" max="4000" value="80"></div><div class="tag">Decay</div></div>
+                <div class="kwrap"><div class="knob" data-id="a"><span class="dot"></span><input type="range" min="0" max="1000" value="2"></div><div class="tag">Attack</div></div>
+                <div class="kwrap"><div class="knob" data-id="h"><span class="dot"></span><input type="range" min="0" max="1000" value="0"></div><div class="tag">Hold</div></div>
+                <div class="kwrap"><div class="knob" data-id="d"><span class="dot"></span><input type="range" min="1" max="2000" value="80"></div><div class="tag">Decay</div></div>
                 <div class="kwrap"><div class="knob" data-id="s"><span class="dot"></span><input type="range" min="0" max="1" step="0.01" value="0.0"></div><div class="tag">Sustain</div></div>
-                <div class="kwrap"><div class="knob" data-id="r"><span class="dot"></span><input type="range" min="1" max="4000" value="120"></div><div class="tag">Release</div></div>
+                <div class="kwrap"><div class="knob" data-id="r"><span class="dot"></span><input type="range" min="1" max="2000" value="120"></div><div class="tag">Release</div></div>
             </div>
             <div class="label">Filter & Envelope</div>
         </div>
-        <!-- MIX & FX -->
-        <div class="block" style="flex: 2;">
+    </div>
+    <div class="param-section">
+        <!-- MODULATION -->
+        <div class="block" style="flex: 1.5;">
             <div class="row knobrow" style="justify-content: center;">
+                <div class="kwrap"><div class="knob" data-id="lfoRate"><span class="dot"></span><input type="range" min="0.1" max="30" step="0.1" value="5"></div><div class="tag">LFO Rate</div></div>
+                <div class="kwrap"><div class="knob" data-id="lfoDepth"><span class="dot"></span><input type="range" min="0" max="100" value="0"></div><div class="tag">LFO Depth</div></div>
+                <div class="miniSel">
+                    <span class="help">Target</span>
+                    <div id="lfoTargetSel">
+                        <button data-target="pitch" class="sel">Pitch</button>
+                        <button data-target="filter">Filter</button>
+                        <button data-target="pan">Pan</button>
+                        <button data-target="blend">Blend</button>
+                    </div>
+                </div>
+            </div>
+            <div class="label">Modulation</div>
+        </div>
+        <!-- MIX & FX -->
+        <div class="block" style="flex: 2.5;">
+            <div class="row knobrow" style="justify-content: center;">
+                <div class="kwrap"><div class="knob" data-id="velocity"><span class="dot"></span><input type="range" min="1" max="127" value="100"></div><div class="tag">Velocity</div></div>
                 <div class="kwrap"><div class="knob" data-id="pan"><span class="dot"></span><input type="range" min="-1" max="1" step="0.01" value="0"></div><div class="tag">Pan</div></div>
                 <div class="kwrap"><div class="knob" data-id="reverbSend"><span class="dot"></span><input type="range" min="0" max="1" step="0.01" value="0"></div><div class="tag">Reverb</div></div>
                 <div class="kwrap"><div class="knob" data-id="delaySend"><span class="dot"></span><input type="range" min="0" max="1" step="0.01" value="0"></div><div class="tag">Delay</div></div>
@@ -233,17 +256,30 @@ const AudioCtx=window.AudioContext||window.webkitAudioContext;
 const ctx=new AudioCtx();
 let masterGain=ctx.createGain(); masterGain.gain.value=0.8;
 let driveNode=ctx.createWaveShaper();
+let tapeWobble = ctx.createOscillator();
+let tapeWobbleGain = ctx.createGain();
+tapeWobble.frequency.value = 0.5;
+tapeWobble.connect(tapeWobbleGain);
+tapeWobble.start();
+let masterHP = ctx.createBiquadFilter(); masterHP.type = 'highpass'; masterHP.frequency.value = 20;
+let masterLP = ctx.createBiquadFilter(); masterLP.type = 'lowpass'; masterLP.frequency.value = 20000;
 let comp=ctx.createDynamicsCompressor();
-let activeVoices = [null, null, null]; // For mute groups 1 and 2
+let activeVoices = [null, null, null];
 
-masterGain.connect(driveNode);
-driveNode.connect(comp);
-comp.connect(ctx.destination);
+masterGain.connect(driveNode).connect(masterHP).connect(masterLP).connect(comp).connect(ctx.destination);
 
 function setDrive(amount){
     const k=amount*2+1; const n=44100; const curve=new Float32Array(n);
     for(let i=0;i<n;i++){ const x=i*2/n-1; curve[i]=Math.tanh(k*x); }
     driveNode.curve=curve;
+}
+function setTape(amount) {
+    const intensity = amount / 100;
+    tapeWobbleGain.gain.value = intensity * 2; // Pitch wobble
+    const hpFreq = 20 + intensity * 200;
+    const lpFreq = 20000 - intensity * 10000;
+    masterHP.frequency.setTargetAtTime(hpFreq, ctx.currentTime, 0.01);
+    masterLP.frequency.setTargetAtTime(lpFreq, ctx.currentTime, 0.01);
 }
 function setComp(amount) {
     comp.threshold.value = -50 + (1-amount) * 50;
@@ -271,11 +307,11 @@ const trackFX = [...Array(8)].map(() => {
     return { reverbSend, delay, delayFb, delaySend };
 });
 
-function triggerVoice(track, trackIndex, when=ctx.currentTime){
+function triggerVoice(track, trackIndex, when=ctx.currentTime, velocityOverride = null){
   const p=track.params;
+  const velocity = (velocityOverride || p.steps[step % 16] || p.velocity) / 127;
   const vGain=ctx.createGain();
 
-  // Mute Group Logic
   const mg = p.muteGroup;
   if (mg > 0) {
       if (activeVoices[mg]) {
@@ -289,8 +325,9 @@ function triggerVoice(track, trackIndex, when=ctx.currentTime){
   const panner=ctx.createStereoPanner(); panner.pan.value=p.pan;
   const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=p.hp; hp.Q.value=0.7;
   const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=p.lp; lp.Q.value=p.res;
-  const mix=ctx.createGain(); mix.gain.value=1;
+  
   const sources=[];
+  const oscGains = [];
   for(let i=0;i<2;i++){
     const oscCfg=p.osc[i];
     let src;
@@ -301,69 +338,105 @@ function triggerVoice(track, trackIndex, when=ctx.currentTime){
     }else{
       src=ctx.createOscillator(); src.type=oscCfg.wave;
       const base= 55 * Math.pow(2,(p.pitch1)/12);
-      src.frequency.value = base;
-      src.detune.value = (i===0 ? p.detune1 : -p.detune1);
+      src.frequency.setValueAtTime(base, when);
+      src.detune.setValueAtTime((i===0 ? p.detune1 : -p.detune1), when);
+      tapeWobbleGain.connect(src.detune);
     }
     const g=ctx.createGain();
-    g.gain.value = (i===0? (p.blend/100) : (1-p.blend/100));
-    src.connect(g).connect(mix);
+    g.gain.value = (i===0 ? (p.blend/100) : (1-p.blend/100));
+    src.connect(g);
     sources.push(src);
+    oscGains.push(g);
+  }
+  const mix = ctx.createGain();
+  oscGains[0].connect(mix);
+  oscGains[1].connect(mix);
+
+  const lfo = ctx.createOscillator(); lfo.frequency.value = p.lfoRate;
+  const lfoGain = ctx.createGain();
+  lfo.connect(lfoGain);
+  lfo.start(when);
+  
+  switch(p.lfoTarget) {
+      case 'pitch': lfoGain.gain.value = p.lfoDepth * 24; sources.forEach(s => { if(s.frequency) lfoGain.connect(s.frequency); }); break;
+      case 'filter': lfoGain.gain.value = p.lfoDepth * 5000; lfoGain.connect(lp.frequency); break;
+      case 'pan': lfoGain.gain.value = p.lfoDepth; lfoGain.connect(panner.pan); break;
+      case 'blend':
+          lfoGain.gain.value = p.lfoDepth / 100;
+          const blendInverter = ctx.createGain(); blendInverter.gain.value = -1;
+          lfoGain.connect(oscGains[0].gain);
+          lfoGain.connect(blendInverter).connect(oscGains[1].gain);
+          break;
   }
 
   const now=when;
-  const a=p.a/1000, d=p.d/1000, s=p.s, r=p.r/1000;
+  const a=p.a/1000, h=p.h/1000, d=p.d/1000, s=p.s, r=p.r/1000;
   vGain.gain.cancelScheduledValues(now);
   vGain.gain.setValueAtTime(0, now);
-  vGain.gain.linearRampToValueAtTime(1, now+a);
-  vGain.gain.linearRampToValueAtTime(s, now+a+d);
-  vGain.gain.linearRampToValueAtTime(0, now+a+d+r);
+  vGain.gain.linearRampToValueAtTime(velocity, now+a);
+  vGain.gain.setValueAtTime(velocity, now+a+h);
+  vGain.gain.linearRampToValueAtTime(s * velocity, now+a+h+d);
+  vGain.gain.linearRampToValueAtTime(0, now+a+h+d+r);
 
   mix.connect(hp).connect(lp).connect(vGain).connect(panner).connect(masterGain);
   const fx = trackFX[trackIndex];
   panner.connect(fx.reverbSend);
   panner.connect(fx.delaySend);
 
-  sources.forEach(s=>{if(s.start) s.start(now);});
-  const stopAt=now+a+d+r+0.1;
-  sources.forEach(s=>{if(s.stop) s.stop(stopAt);});
+  const stopAt=now+a+h+d+r+0.1;
+  sources.forEach(s=>{if(s.start) s.start(now); s.stop(stopAt);});
+  lfo.stop(stopAt);
   
   if (mg > 0) {
-      setTimeout(() => {
-          if (activeVoices[mg] === vGain) activeVoices[mg] = null;
-      }, (stopAt - ctx.currentTime) * 1000);
+      setTimeout(() => { if (activeVoices[mg] === vGain) activeVoices[mg] = null; }, (stopAt - ctx.currentTime) * 1000);
   }
 }
 
 /* ---------- Model & Presets ---------- */
 const defaultParams=()=>({
   osc:[{wave:'sine'},{wave:'square'}], pitch1:0, detune1:0, blend:70,
-  lp:12000, hp:30, res:0.7, a:2,d:80,s:0,r:120, pan:0,
+  lp:12000, hp:30, res:0.7, a:2, h:0, d:80,s:0,r:120, pan:0,
+  lfoRate: 5, lfoDepth: 0, lfoTarget: 'pitch', velocity: 100,
   reverbSend: 0, delaySend: 0, delayTime: 0.25, delayFb: 0.3,
-  muted:false, steps:Array(16).fill(false), name:'New Sound', muteGroup: 0
+  muted:false, steps:Array(16).fill(0), name:'New Sound', muteGroup: 0
 });
 
 const soundPresets = [
-    { name: 'Kick', pitch1: -12, d: 250, r: 250, lp: 400, blend: 100, osc: [{wave: 'sine'}, {wave: 'sine'}] },
-    { name: 'Snare', blend: 20, d: 120, r: 120, hp: 200, lp: 8000, osc: [{wave: 'noise'}, {wave: 'triangle'}] },
+    { name: 'Kick 808', pitch1: -12, d: 250, r: 250, lp: 400, blend: 100, osc: [{wave: 'sine'}, {wave: 'sine'}] },
+    { name: 'Kick 909', pitch1: -10, d: 180, r: 180, lp: 800, blend: 80, osc: [{wave: 'triangle'}, {wave: 'noise'}] },
+    { name: 'Kick Hard', pitch1: -14, d: 150, r: 150, lp: 1200, blend: 100, osc: [{wave: 'square'}, {wave: 'sawtooth'}] },
+    { name: 'Snare 808', blend: 20, d: 120, r: 120, hp: 200, lp: 8000, osc: [{wave: 'noise'}, {wave: 'triangle'}] },
+    { name: 'Snare Tight', blend: 30, d: 80, r: 80, hp: 300, lp: 9000, osc: [{wave: 'noise'}, {wave: 'sine'}] },
+    { name: 'Snare LoFi', blend: 10, d: 150, r: 150, hp: 100, lp: 5000, osc: [{wave: 'noise'}, {wave: 'square'}] },
     { name: 'Hat Closed', pitch1: 12, d: 50, r: 50, hp: 6000, osc: [{wave: 'noise'}, {wave: 'noise'}], muteGroup: 1 },
     { name: 'Hat Open', pitch1: 12, d: 400, r: 400, hp: 5000, osc: [{wave: 'noise'}, {wave: 'square'}], muteGroup: 1 },
+    { name: 'Hat Crispy', pitch1: 14, d: 60, r: 60, hp: 8000, osc: [{wave: 'noise'}, {wave: 'sawtooth'}], muteGroup: 1 },
     { name: 'Tom Lo', pitch1: -5, d: 250, r: 250, lp: 1500, osc: [{wave: 'triangle'}, {wave: 'sine'}] },
     { name: 'Tom Mid', pitch1: 0, d: 200, r: 200, lp: 2000, osc: [{wave: 'triangle'}, {wave: 'sine'}] },
     { name: 'Tom Hi', pitch1: 5, d: 150, r: 150, lp: 2500, osc: [{wave: 'triangle'}, {wave: 'sine'}] },
     { name: 'Crash', pitch1: 16, d: 1200, r: 1200, hp: 4000, lp: 15000, osc: [{wave: 'noise'}, {wave: 'square'}], blend: 70 },
+    { name: 'Ride', pitch1: 14, d: 800, r: 800, hp: 3000, lp: 18000, osc: [{wave: 'square'}, {wave: 'noise'}], blend: 40 },
+    { name: 'China', pitch1: 18, d: 1000, r: 1000, hp: 2000, lp: 16000, osc: [{wave: 'sawtooth'}, {wave: 'noise'}], blend: 60 },
     { name: 'Clap', blend: 50, d: 90, r: 90, hp: 1000, lp: 9000, osc: [{wave: 'noise'}, {wave: 'noise'}] },
     { name: 'Rimshot', pitch1: 12, d: 60, r: 60, lp: 4000, hp: 1000, osc: [{wave: 'square'}, {wave: 'square'}] },
     { name: 'Cowbell', pitch1: 7, detune1: 25, d: 150, r: 150, lp: 10000, osc: [{wave: 'square'}, {wave: 'square'}], blend: 50 },
-    { name: 'Zap', pitch1: -12, d: 200, r: 200, lp: 2000, res: 15, osc: [{wave: 'sawtooth'}, {wave: 'sawtooth'}] }
+    { name: 'Zap', pitch1: -12, d: 200, r: 200, lp: 2000, res: 15, osc: [{wave: 'sawtooth'}, {wave: 'sawtooth'}] },
+    { name: 'Blip', pitch1: 12, d: 30, r: 30, lp: 3000, res: 5, osc: [{wave: 'triangle'}, {wave: 'triangle'}] },
+    { name: 'Laser', pitch1: 24, d: 300, r: 300, lp: 10000, res: 2, osc: [{wave: 'sawtooth'}, {wave: 'sine'}] }
 ];
 
 let currentPresetIndex = 0;
 let tracks = [];
 let initialKit = [];
+let motionData = { hp: [], lp: [] };
 
 function initTracksWithKit() {
-    initialKit = soundPresets.slice(0, 8).map(p => ({ ...defaultParams(), ...p }));
-    tracks = initialKit.map(p => ({ params: JSON.parse(JSON.stringify(p)) })); // Deep copy
+    const defaultKitSetup = [
+        soundPresets[0], soundPresets[3], soundPresets[6], soundPresets[7],
+        soundPresets[9], soundPresets[10], soundPresets[11], soundPresets[12]
+    ];
+    initialKit = defaultKitSetup.map(p => ({ ...defaultParams(), ...p }));
+    tracks = initialKit.map(p => ({ params: JSON.parse(JSON.stringify(p)) }));
     currentTrack = 0;
     applyParamsToUI();
     renderTracks();
@@ -391,6 +464,9 @@ function applyParamsToUI() {
     });
     document.querySelectorAll('#muteGroupSel button').forEach(b => {
         b.classList.toggle('sel', +b.dataset.group === p.muteGroup);
+    });
+    document.querySelectorAll('#lfoTargetSel button').forEach(b => {
+        b.classList.toggle('sel', b.dataset.target === p.lfoTarget);
     });
     document.getElementById('trackName').textContent = p.name;
     document.getElementById('presetName').textContent = p.name;
@@ -420,10 +496,16 @@ function renderTracks(){
         renderTracks();
         return;
       }
+      if (isRolling) return;
       currentTrack=i;
       applyParamsToUI();
       renderTracks();
       highlightSteps();
+    });
+    el.addEventListener('mousedown', e => {
+        if (isRolling && !e.target.classList.contains('mute-btn')) {
+            triggerVoice(t, i, ctx.currentTime, 127);
+        }
     });
     tracksDiv.appendChild(el);
   });
@@ -436,7 +518,9 @@ function renderSeq(){
     pad.innerHTML=`<small>${i+1}</small>`;
     pad.addEventListener('click',()=>{
       const st=tracks[currentTrack].params.steps;
-      st[i]=!st[i]; pad.classList.toggle('on',st[i]);
+      const vel = tracks[currentTrack].params.velocity;
+      st[i] = st[i] > 0 ? 0 : vel;
+      highlightSteps();
     });
     seqDiv.appendChild(pad);
   }
@@ -445,13 +529,18 @@ function renderSeq(){
 function highlightSteps(){
   if (!tracks.length) return;
   const st=tracks[currentTrack].params.steps;
-  [...seqDiv.children].forEach((p,i)=>p.classList.toggle('on',!!st[i]));
+  [...seqDiv.children].forEach((p,i)=>{
+      const vel = st[i];
+      p.classList.toggle('on', vel > 0);
+      p.style.opacity = vel > 0 ? (vel / 127) * 0.7 + 0.3 : 1;
+  });
 }
 
 /* ---------- Transport / clock ---------- */
 let isPlaying=false, isReversed=false, step=0, lastTick=0, swing=0, timer=0;
-let isStuttering = false, stutterStartStep = 0, stutterRate = 1;
-const stutterRates = [1, 2, 4, 8, 16]; // 1=16th, 2=8th, 4=quarter, etc.
+let isRolling = false, rollRate = 1;
+const rollRates = [4, 8, 16]; // 8th, 16th, 32nd
+let isFxRec = false;
 
 function schedule(){
   const bpm=+document.getElementById('bpm').value;
@@ -461,20 +550,16 @@ function schedule(){
 
   while(lastTick < now + 0.1){
     const absoluteStep = step % 16;
-    let seqPos;
-
-    if (isStuttering) {
-        const stutterLen = stutterRates[stutterRate];
-        const stutterOffset = (step - stutterStartStep) % stutterLen;
-        seqPos = (stutterStartStep + stutterOffset) % 16;
-    } else {
-        seqPos = isReversed ? 15 - absoluteStep : absoluteStep;
-    }
+    const seqPos = isReversed ? 15 - absoluteStep : absoluteStep;
 
     const timeAt = lastTick + ((step % 2) ? swingAmt : -swingAmt);
     tracks.forEach((t,ti)=>{
       if(!t.params.muted && t.params.steps[seqPos]) triggerVoice(t, ti, timeAt + stepDur);
     });
+
+    // Motion playback
+    if (motionData.hp[absoluteStep] !== undefined) masterHP.frequency.setTargetAtTime(motionData.hp[absoluteStep], timeAt + stepDur, 0.01);
+    if (motionData.lp[absoluteStep] !== undefined) masterLP.frequency.setTargetAtTime(motionData.lp[absoluteStep], timeAt + stepDur, 0.01);
 
     setTimeout(()=>{
       const pads=[...seqDiv.children];
@@ -510,20 +595,20 @@ document.getElementById('reverseBtn').addEventListener('click', (e) => {
     isReversed = !isReversed; e.target.classList.toggle('active', isReversed);
 });
 
-const stutterBtn = document.getElementById('stutterBtn');
-stutterBtn.addEventListener('mousedown', () => {
-    if (!isPlaying) return;
-    isStuttering = true;
-    stutterStartStep = (step -1) % 16;
-    stutterBtn.classList.add('active');
-});
-stutterBtn.addEventListener('mouseup', () => {
-    isStuttering = false;
-    stutterBtn.classList.remove('active');
-});
-stutterBtn.addEventListener('mouseleave', () => {
-    isStuttering = false;
-    stutterBtn.classList.remove('active');
+const rollBtn = document.getElementById('rollBtn');
+rollBtn.addEventListener('mousedown', () => isRolling = true);
+rollBtn.addEventListener('mouseup', () => isRolling = false);
+rollBtn.addEventListener('mouseleave', () => isRolling = false);
+
+const fxRecBtn = document.getElementById('fxRecBtn');
+fxRecBtn.addEventListener('click', (e) => {
+    if (e.shiftKey) {
+        motionData = { hp: [], lp: [] };
+        return;
+    }
+    isFxRec = !isFxRec;
+    fxRecBtn.classList.toggle('active', isFxRec);
+    if (isFxRec) motionData = { hp: [], lp: [] };
 });
 
 
@@ -531,11 +616,20 @@ stutterBtn.addEventListener('mouseleave', () => {
 uiKnobs.swing.addEventListener('input', e => swing = +e.target.value);
 uiKnobs.gvol.addEventListener('input', e => masterGain.gain.value = +e.target.value / 100);
 uiKnobs.drive.addEventListener('input', e => setDrive(+e.target.value / 100));
-uiKnobs.comp.addEventListener('input', e => setComp(+e.target.value / 100));
-uiKnobs.stutterRate.addEventListener('input', e => stutterRate = +e.target.value);
+uiKnobs.tape.addEventListener('input', e => setTape(+e.target.value));
+uiKnobs.masterHP.addEventListener('input', e => {
+    masterHP.frequency.setTargetAtTime(+e.target.value, ctx.currentTime, 0.01);
+    if (isFxRec && isPlaying) motionData.hp[step % 16] = +e.target.value;
+});
+uiKnobs.masterLP.addEventListener('input', e => {
+    masterLP.frequency.setTargetAtTime(+e.target.value, ctx.currentTime, 0.01);
+    if (isFxRec && isPlaying) motionData.lp[step % 16] = +e.target.value;
+});
+uiKnobs.rollRate.addEventListener('input', e => rollRate = +e.target.value);
+
 
 Object.keys(uiKnobs).forEach(key => {
-    if (['swing', 'gvol', 'drive', 'comp', 'stutterRate'].includes(key)) return;
+    if (['swing', 'gvol', 'drive', 'tape', 'masterHP', 'masterLP', 'rollRate'].includes(key)) return;
     uiKnobs[key].addEventListener('input', e => {
         updateParamFromUI(key, e.target.type === 'range' ? +e.target.value : e.target.value);
     });
@@ -561,14 +655,19 @@ document.querySelectorAll('#muteGroupSel button').forEach(b => {
         applyParamsToUI();
     });
 });
+document.querySelectorAll('#lfoTargetSel button').forEach(b => {
+    b.addEventListener('click', () => {
+        tracks[currentTrack].params.lfoTarget = b.dataset.target;
+        applyParamsToUI();
+    });
+});
 
 function loadSoundPreset(direction) {
     currentPresetIndex = (currentPresetIndex + direction + soundPresets.length) % soundPresets.length;
     const newPreset = soundPresets[currentPresetIndex];
-    const oldSteps = tracks[currentTrack].params.steps;
-    const oldMuted = tracks[currentTrack].params.muted;
-    const oldMuteGroup = tracks[currentTrack].params.muteGroup;
-    tracks[currentTrack].params = { ...defaultParams(), ...newPreset, steps: oldSteps, muted: oldMuted, muteGroup: oldMuteGroup };
+    const oldParams = tracks[currentTrack].params;
+    let newMuteGroup = newPreset.muteGroup !== undefined ? newPreset.muteGroup : oldParams.muteGroup;
+    tracks[currentTrack].params = { ...defaultParams(), ...newPreset, steps: oldParams.steps, muted: oldParams.muted, muteGroup: newMuteGroup };
     applyParamsToUI();
     renderTracks();
 }
@@ -586,12 +685,27 @@ document.getElementById('resetBtn').addEventListener('click', () => {
 });
 
 document.getElementById('audition').addEventListener('click', () => {
-    ctx.resume(); triggerVoice(tracks[currentTrack], currentTrack);
+    ctx.resume(); 
+    const p = tracks[currentTrack].params;
+    const tempTrack = { params: {...p, steps: [p.velocity]} };
+    triggerVoice(tempTrack, currentTrack, ctx.currentTime, 127);
 });
 
 // Initial Load
 initTracksWithKit();
 renderSeq();
+
+// Roll interval
+setInterval(() => {
+    if (isRolling) {
+        const activeTrack = document.querySelector('.trk-pad.active');
+        if (activeTrack) {
+            const trackIndex = [...activeTrack.parentElement.children].indexOf(activeTrack);
+            triggerVoice(tracks[trackIndex], trackIndex, ctx.currentTime, 127);
+        }
+    }
+}, 60000 / 120 / rollRates[rollRate]);
+
 
 </script>
 </body>
