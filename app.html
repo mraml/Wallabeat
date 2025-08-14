@@ -85,10 +85,11 @@
 <body>
 <div class="wrap">
   <header>
+    <div class="brand">Wallabeat</div>
   </header>
 
   <section class="panel">
-    <div class="block" style="display:flex; flex-direction: row; align-items:center;justify-content:space-between;gap:16px; flex-wrap: wrap;">
+    <div class="block" style="display:flex; flex-direction: row; align-items:center;justify-content:flex-start;gap:16px; flex-wrap: wrap;">
       <div class="preset">
         <span class="help">Track</span>
         <button id="prevTrack" class="mini">&lt;</button>
@@ -215,18 +216,17 @@
                     <div class="kwrap"><div class="knob" data-id="delayTime"><span class="dot"></span><input type="range" min="0.01" max="1" step="0.01" value="0.25"></div><div class="tag">Dly Time</div></div>
                     <div class="kwrap"><div class="knob" data-id="delayFb"><span class="dot"></span><input type="range" min="0" max="0.9" step="0.01" value="0.3"></div><div class="tag">Dly FB</div></div>
                 </div>
-                <div class="row" style="justify-content: center; margin-top: 16px; gap: 16px;">
-                    <div class="brand">Wallabeat</div>
+                 <div class="row" style="justify-content: center; margin-top: 16px; gap: 16px;">
                     <div class="chip"><small>BPM</small>
                     <input id="bpm" type="number" min="40" max="240" step="1" value="120"
                             style="width:74px;background:#0e1522;border:1px solid #1f2b40;color:#dff0ff;border-radius:10px;padding:8px 10px"/>
                     </div>
-                    <button id="fxRecBtn" class="btn fx-rec">FX REC</button>
-                    <button id="playBtn" class="btn play">Play</button>
-                    <button id="stopBtn" class="btn stop">Stop</button>
+                    <button id="fxRecBtn" class="btn fx-rec" style="padding: 8px 16px; border-radius: 12px;">FX REC</button>
+                    <button id="playBtn" class="btn play" style="padding: 8px 16px; border-radius: 12px;">Play</button>
+                    <button id="stopBtn" class="btn stop" style="padding: 8px 16px; border-radius: 12px;">Stop</button>
                 </div>
             </div>
-            <div class="label">Mix & Effects</div>
+            <div class="label">Mix & Transport</div>
         </div>
     </div>
   </section>
