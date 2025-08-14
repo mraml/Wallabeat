@@ -50,12 +50,13 @@
   @media(max-width:820px){.tracks{grid-template-columns:repeat(4,1fr)}}
   .trk-pad{
     background:linear-gradient(180deg, #2a3957, #1a2538);
-    border-radius:14px; padding:12px; text-align:center;
+    border-radius:14px; padding:12px;
     font-weight: 700; cursor: pointer;
     box-shadow: var(--shadow);
     position: relative;
     user-select: none;
   }
+  .trk-pad .track-name { text-align: left; padding-left: 4px; }
   .trk-pad.active{outline:2px solid var(--accent); background: var(--accent); color: var(--bg);}
   .trk-pad .mute-btn {
     position: absolute;
@@ -84,14 +85,14 @@
   .knob{
     --size:60px; --track:#26405f; --tick:#7fbaff;
     width:var(--size);height:var(--size);border-radius:50%;
-    background:conic-gradient(from -210deg, var(--tick) 0deg 0deg, #1b2a44 0deg 360deg), radial-gradient(circle at 50% 45%, #233653 0 60%, #0e192a 60% 100%);
+    background:conic-gradient(from -135deg, var(--tick) 0deg 0deg, #1b2a44 0deg 360deg), radial-gradient(circle at 50% 45%, #233653 0 60%, #0e192a 60% 100%);
     position:relative;display:grid;place-items:center;box-shadow:inset 0 4px 9px rgba(0,0,0,.6),0 6px 14px rgba(0,0,0,.35)
   }
   .knob input{position:absolute;inset:0;opacity:0;cursor:pointer}
   .knob .dot{
     width:6px;height:6px;border-radius:50%;background:#bfe4ff;
-    transform:rotate(0deg) translateY(calc(-1 * var(--size) / 2.4));
     transform-origin: center;
+    transform: rotate(0deg) translateY(calc(-1 * var(--size) / 2.7));
   }
   .kwrap{display:flex;flex-direction:column;align-items:center;gap:6px;width:86px}
   .kwrap .tag{font-size:12px;color:#a5b8d9;text-align:center}
@@ -112,12 +113,6 @@
     </div>
     <div class="sp"></div>
     <div class="hdr-knobs knobrow">
-      <div class="kwrap"><div class="knob" data-id="swing"><span class="dot"></span><input type="range" min="0" max="100" value="0"></div><div class="tag">Swing</div></div>
-      <div class="kwrap"><div class="knob" data-id="gvol"><span class="dot"></span><input type="range" min="0" max="100" value="80"></div><div class="tag">Master Vol</div></div>
-      <div class="kwrap"><div class="knob" data-id="drive"><span class="dot"></span><input type="range" min="0" max="100" value="10"></div><div class="tag">Drive</div></div>
-      <div class="kwrap"><div class="knob" data-id="tape"><span class="dot"></span><input type="range" min="0" max="100" value="0"></div><div class="tag">Tape/Vinyl</div></div>
-      <div class="kwrap"><div class="knob" data-id="masterHP"><span class="dot"></span><input type="range" min="20" max="10000" value="20"></div><div class="tag">Master HPF</div></div>
-      <div class="kwrap"><div class="knob" data-id="masterLP"><span class="dot"></span><input type="range" min="100" max="20000" value="20000"></div><div class="tag">Master LPF</div></div>
       <div class="kwrap"><div class="knob" data-id="rollRate"><span class="dot"></span><input type="range" min="0" max="2" value="1" step="1"></div><div class="tag">Roll Rate</div></div>
     </div>
     <button id="rollBtn" class="btn">Roll</button>
@@ -157,12 +152,9 @@
                         <button class="tab oscTab active" data-osc="0">OSC 1</button>
                         <button class="tab oscTab" data-osc="1">OSC 2</button>
                     </div>
-                    <div class="miniSel" id="waveSel">
-                        <button data-wave="sine" class="sel">Sine</button>
-                        <button data-wave="square">Square</button>
-                        <button data-wave="triangle">Tri</button>
-                        <button data-wave="sawtooth">Saw</button>
-                        <button data-wave="noise">Noise</button>
+                    <div class="preset" id="waveSel">
+                        <div class="presetname" id="waveName" style="min-width: 90px;">Sine</div>
+                        <button id="nextWave" class="mini">&gt;</button>
                     </div>
                 </div>
                 <div class="knobrow">
@@ -174,18 +166,34 @@
             <div class="label">Oscillators</div>
         </div>
         <!-- FILTER & ENV -->
-        <div class="block" style="flex: 2.5;">
-            <div class="row knobrow" style="justify-content: center;">
-                <div class="kwrap"><div class="knob" data-id="lp"><span class="dot"></span><input type="range" min="50" max="20000" value="12000" step="1"></div><div class="tag">LP Cut</div></div>
-                <div class="kwrap"><div class="knob" data-id="hp"><span class="dot"></span><input type="range" min="20" max="2000" value="30" step="1"></div><div class="tag">HP Cut</div></div>
-                <div class="kwrap"><div class="knob" data-id="res"><span class="dot"></span><input type="range" min="0.1" max="20" step="0.1" value="0.7"></div><div class="tag">Res</div></div>
+        <div class="block" style="flex: 2;">
+            <div class="knobrow" style="justify-content: center;">
                 <div class="kwrap"><div class="knob" data-id="a"><span class="dot"></span><input type="range" min="0" max="1000" value="2"></div><div class="tag">Attack</div></div>
-                <div class="kwrap"><div class="knob" data-id="h"><span class="dot"></span><input type="range" min="0" max="1000" value="0"></div><div class="tag">Hold</div></div>
                 <div class="kwrap"><div class="knob" data-id="d"><span class="dot"></span><input type="range" min="1" max="2000" value="80"></div><div class="tag">Decay</div></div>
                 <div class="kwrap"><div class="knob" data-id="s"><span class="dot"></span><input type="range" min="0" max="1" step="0.01" value="0.0"></div><div class="tag">Sustain</div></div>
                 <div class="kwrap"><div class="knob" data-id="r"><span class="dot"></span><input type="range" min="1" max="2000" value="120"></div><div class="tag">Release</div></div>
             </div>
+            <div class="knobrow" style="justify-content: center; margin-top: 16px;">
+                 <div class="kwrap"><div class="knob" data-id="h"><span class="dot"></span><input type="range" min="0" max="1000" value="0"></div><div class="tag">Hold</div></div>
+                <div class="kwrap"><div class="knob" data-id="fdecay"><span class="dot"></span><input type="range" min="1" max="2000" value="200"></div><div class="tag">F.Decay</div></div>
+                <div class="kwrap"><div class="knob" data-id="lp"><span class="dot"></span><input type="range" min="50" max="20000" value="12000" step="1"></div><div class="tag">LP Cut</div></div>
+                <div class="kwrap"><div class="knob" data-id="hp"><span class="dot"></span><input type="range" min="20" max="2000" value="30" step="1"></div><div class="tag">HP Cut</div></div>
+            </div>
             <div class="label">Filter & Envelope</div>
+        </div>
+        <!-- MASTER CONTROLS -->
+        <div class="block" style="flex: 1.8;">
+            <div class="knobrow" style="justify-content: center;">
+                <div class="kwrap"><div class="knob" data-id="swing"><span class="dot"></span><input type="range" min="0" max="100" value="0"></div><div class="tag">Swing</div></div>
+                <div class="kwrap"><div class="knob" data-id="drive"><span class="dot"></span><input type="range" min="0" max="100" value="10"></div><div class="tag">Drive</div></div>
+                <div class="kwrap"><div class="knob" data-id="tape"><span class="dot"></span><input type="range" min="0" max="100" value="0"></div><div class="tag">Tape/Vinyl</div></div>
+            </div>
+            <div class="knobrow" style="justify-content: center; margin-top: 16px;">
+                <div class="kwrap"><div class="knob" data-id="masterHP"><span class="dot"></span><input type="range" min="20" max="10000" value="20"></div><div class="tag">Master HPF</div></div>
+                <div class="kwrap"><div class="knob" data-id="masterLP"><span class="dot"></span><input type="range" min="100" max="20000" value="20000"></div><div class="tag">Master LPF</div></div>
+                <div class="kwrap"><div class="knob" data-id="gvol"><span class="dot"></span><input type="range" min="0" max="100" value="80"></div><div class="tag">Master Vol</div></div>
+            </div>
+             <div class="label">Master</div>
         </div>
     </div>
     <div class="param-section">
@@ -242,8 +250,8 @@ function initKnobs() {
       const update=()=>{
         const min=+input.min, max=+input.max, val=+input.value;
         const pct=(val-min)/(max-min);
-        const deg = -210 + pct * 240;
-        dot.style.transform=`rotate(${deg}deg) translateY(calc(-1 * var(--size) / 2.4))`;
+        const deg = -135 + pct * 270; // Corrected range for 7 o'clock to 5 o'clock
+        dot.style.transform=`rotate(${deg}deg) translateY(calc(-1 * var(--size) / 2.7))`;
       };
       input.addEventListener('input',update);
       input.dispatchEvent(new Event('input'));
@@ -395,7 +403,7 @@ function triggerVoice(track, trackIndex, when=ctx.currentTime, velocityOverride 
 /* ---------- Model & Presets ---------- */
 const defaultParams=()=>({
   osc:[{wave:'sine'},{wave:'square'}], pitch1:0, detune1:0, blend:70,
-  lp:12000, hp:30, res:0.7, a:2, h:0, d:80,s:0,r:120, pan:0,
+  lp:12000, hp:30, res:0.7, a:2, h:0, d:80,s:0,r:120, fdecay: 200, pan:0,
   lfoRate: 5, lfoDepth: 0, lfoTarget: 'pitch', velocity: 100,
   reverbSend: 0, delaySend: 0, delayTime: 0.25, delayFb: 0.3,
   muted:false, steps:Array(16).fill(0), name:'New Sound', muteGroup: 0
@@ -425,6 +433,7 @@ const soundPresets = [
     { name: 'Laser', pitch1: 24, d: 300, r: 300, lp: 10000, res: 2, osc: [{wave: 'sawtooth'}, {wave: 'sine'}] }
 ];
 
+const waveTypes = ['sine', 'square', 'triangle', 'sawtooth', 'noise'];
 let currentPresetIndex = 0;
 let tracks = [];
 let initialKit = [];
@@ -459,9 +468,7 @@ function applyParamsToUI() {
         }
     }
     const currentOsc = document.querySelector('.oscTab.active').dataset.osc;
-    document.querySelectorAll('#waveSel button').forEach(b => {
-        b.classList.toggle('sel', b.dataset.wave === p.osc[currentOsc].wave);
-    });
+    document.getElementById('waveName').textContent = p.osc[currentOsc].wave;
     document.querySelectorAll('#muteGroupSel button').forEach(b => {
         b.classList.toggle('sel', +b.dataset.group === p.muteGroup);
     });
@@ -557,7 +564,6 @@ function schedule(){
       if(!t.params.muted && t.params.steps[seqPos]) triggerVoice(t, ti, timeAt + stepDur);
     });
 
-    // Motion playback
     if (motionData.hp[absoluteStep] !== undefined) masterHP.frequency.setTargetAtTime(motionData.hp[absoluteStep], timeAt + stepDur, 0.01);
     if (motionData.lp[absoluteStep] !== undefined) masterLP.frequency.setTargetAtTime(motionData.lp[absoluteStep], timeAt + stepDur, 0.01);
 
@@ -642,12 +648,14 @@ document.querySelectorAll('.oscTab').forEach(tab => {
         applyParamsToUI();
     });
 });
-document.querySelectorAll('#waveSel button').forEach(b => {
-    b.addEventListener('click', () => {
-        const currentOsc = document.querySelector('.oscTab.active').dataset.osc;
-        tracks[currentTrack].params.osc[currentOsc].wave = b.dataset.wave;
-        applyParamsToUI();
-    });
+document.getElementById('nextWave').addEventListener('click', () => {
+    const p = tracks[currentTrack].params;
+    const currentOsc = document.querySelector('.oscTab.active').dataset.osc;
+    const currentWave = p.osc[currentOsc].wave;
+    const currentIndex = waveTypes.indexOf(currentWave);
+    const nextIndex = (currentIndex + 1) % waveTypes.length;
+    p.osc[currentOsc].wave = waveTypes[nextIndex];
+    applyParamsToUI();
 });
 document.querySelectorAll('#muteGroupSel button').forEach(b => {
     b.addEventListener('click', () => {
@@ -701,10 +709,13 @@ setInterval(() => {
         const activeTrack = document.querySelector('.trk-pad.active');
         if (activeTrack) {
             const trackIndex = [...activeTrack.parentElement.children].indexOf(activeTrack);
+            const bpm = +document.getElementById('bpm').value;
+            const rate = rollRates[rollRate];
+            const interval = 60000 / (bpm * (rate / 4));
             triggerVoice(tracks[trackIndex], trackIndex, ctx.currentTime, 127);
         }
     }
-}, 60000 / 120 / rollRates[rollRate]);
+}, 50); // Check frequently for roll state
 
 
 </script>
