@@ -1,2 +1,2 @@
-# Wallabeat
+# Wombat
 Simple, Powerful Drum Machine
