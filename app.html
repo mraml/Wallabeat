@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Wallabeat — Tempest‑Inspired Drum Synth</title>
+<title>Wombat — Tempest‑Inspired Drum Synth</title>
 <style>
   :root{
     --bg:#0f1722;--panel:#121b28;--panel2:#162235;--muted:#7c91b1;
@@ -85,7 +85,6 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="brand">Wallabeat</div>
   </header>
 
   <section class="panel">
@@ -157,21 +156,19 @@
             </div>
             <div class="label">Filter & Envelope</div>
         </div>
-        <!-- MASTER CONTROLS -->
-        <div class="block" style="flex: 1.8;">
+        <!-- MIX & FX -->
+        <div class="block" style="flex: 2.5;">
             <div>
-                <div class="knobrow" style="justify-content: center;">
-                    <div class="kwrap"><div class="knob" data-id="swing"><span class="dot"></span><input type="range" min="0" max="100" value="0"></div><div class="tag">Swing</div></div>
-                    <div class="kwrap"><div class="knob" data-id="drive"><span class="dot"></span><input type="range" min="0" max="100" value="10"></div><div class="tag">Drive</div></div>
-                    <div class="kwrap"><div class="knob" data-id="tape"><span class="dot"></span><input type="range" min="0" max="100" value="0"></div><div class="tag">Tape/Vinyl</div></div>
-                </div>
-                <div class="knobrow" style="justify-content: center; margin-top: 16px;">
-                    <div class="kwrap"><div class="knob" data-id="masterHP"><span class="dot"></span><input type="range" min="20" max="10000" value="20"></div><div class="tag">Master HPF</div></div>
-                    <div class="kwrap"><div class="knob" data-id="masterLP"><span class="dot"></span><input type="range" min="100" max="20000" value="20000"></div><div class="tag">Master LPF</div></div>
-                    <div class="kwrap"><div class="knob" data-id="gvol"><span class="dot"></span><input type="range" min="0" max="100" value="80"></div><div class="tag">Master Vol</div></div>
+                <div class="row knobrow" style="justify-content: center;">
+                    <div class="kwrap"><div class="knob" data-id="velocity"><span class="dot"></span><input type="range" min="1" max="127" value="100"></div><div class="tag">Velocity</div></div>
+                    <div class="kwrap"><div class="knob" data-id="pan"><span class="dot"></span><input type="range" min="-1" max="1" step="0.01" value="0"></div><div class="tag">Pan</div></div>
+                    <div class="kwrap"><div class="knob" data-id="reverbSend"><span class="dot"></span><input type="range" min="0" max="1" step="0.01" value="0"></div><div class="tag">Reverb</div></div>
+                    <div class="kwrap"><div class="knob" data-id="delaySend"><span class="dot"></span><input type="range" min="0" max="1" step="0.01" value="0"></div><div class="tag">Delay</div></div>
+                    <div class="kwrap"><div class="knob" data-id="delayTime"><span class="dot"></span><input type="range" min="0.01" max="1" step="0.01" value="0.25"></div><div class="tag">Dly Time</div></div>
+                    <div class="kwrap"><div class="knob" data-id="delayFb"><span class="dot"></span><input type="range" min="0" max="0.9" step="0.01" value="0.3"></div><div class="tag">Dly FB</div></div>
                 </div>
             </div>
-             <div class="label">Master</div>
+            <div class="label">Mix & Effects</div>
         </div>
     </div>
     <div class="param-section">
@@ -205,16 +202,18 @@
             </div>
             <div class="label">Performance</div>
         </div>
-        <!-- MIX & FX -->
-        <div class="block" style="flex: 2.5;">
+        <!-- MASTER & TRANSPORT -->
+        <div class="block" style="flex: 1.8;">
             <div>
-                <div class="row knobrow" style="justify-content: center;">
-                    <div class="kwrap"><div class="knob" data-id="velocity"><span class="dot"></span><input type="range" min="1" max="127" value="100"></div><div class="tag">Velocity</div></div>
-                    <div class="kwrap"><div class="knob" data-id="pan"><span class="dot"></span><input type="range" min="-1" max="1" step="0.01" value="0"></div><div class="tag">Pan</div></div>
-                    <div class="kwrap"><div class="knob" data-id="reverbSend"><span class="dot"></span><input type="range" min="0" max="1" step="0.01" value="0"></div><div class="tag">Reverb</div></div>
-                    <div class="kwrap"><div class="knob" data-id="delaySend"><span class="dot"></span><input type="range" min="0" max="1" step="0.01" value="0"></div><div class="tag">Delay</div></div>
-                    <div class="kwrap"><div class="knob" data-id="delayTime"><span class="dot"></span><input type="range" min="0.01" max="1" step="0.01" value="0.25"></div><div class="tag">Dly Time</div></div>
-                    <div class="kwrap"><div class="knob" data-id="delayFb"><span class="dot"></span><input type="range" min="0" max="0.9" step="0.01" value="0.3"></div><div class="tag">Dly FB</div></div>
+                <div class="knobrow" style="justify-content: center;">
+                    <div class="kwrap"><div class="knob" data-id="swing"><span class="dot"></span><input type="range" min="0" max="100" value="0"></div><div class="tag">Swing</div></div>
+                    <div class="kwrap"><div class="knob" data-id="drive"><span class="dot"></span><input type="range" min="0" max="100" value="10"></div><div class="tag">Drive</div></div>
+                    <div class="kwrap"><div class="knob" data-id="tape"><span class="dot"></span><input type="range" min="0" max="100" value="0"></div><div class="tag">Tape/Vinyl</div></div>
+                </div>
+                <div class="knobrow" style="justify-content: center; margin-top: 16px;">
+                    <div class="kwrap"><div class="knob" data-id="masterHP"><span class="dot"></span><input type="range" min="20" max="10000" value="20"></div><div class="tag">Master HPF</div></div>
+                    <div class="kwrap"><div class="knob" data-id="masterLP"><span class="dot"></span><input type="range" min="100" max="20000" value="20000"></div><div class="tag">Master LPF</div></div>
+                    <div class="kwrap"><div class="knob" data-id="gvol"><span class="dot"></span><input type="range" min="0" max="100" value="80"></div><div class="tag">Master Vol</div></div>
                 </div>
                  <div class="row" style="justify-content: center; margin-top: 16px; gap: 16px;">
                     <div class="chip"><small>BPM</small>
@@ -226,7 +225,7 @@
                     <button id="stopBtn" class="btn stop" style="padding: 8px 16px; border-radius: 12px;">Stop</button>
                 </div>
             </div>
-            <div class="label">Mix & Transport</div>
+             <div class="label">Master & Transport</div>
         </div>
     </div>
   </section>
@@ -240,6 +239,8 @@
             <button id="nextPageBtn" class="mini">&gt;</button>
         </div>
         <div id="pageIndicators" class="page-indicators" style="margin-left: 24px;"></div>
+        <div class="sp"></div>
+        <div class="brand">Wombat</div>
     </div>
     <div id="seq" class="seq"></div>
   </section>
