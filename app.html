@@ -29,9 +29,9 @@
   .btn.play{background:linear-gradient(180deg,#26d2ff,#1485ff)}
   .btn.stop{background:linear-gradient(180deg,#ff9a9a,#ff5d5d)}
   .btn.reverse.active{background:var(--accent2); color: var(--bg);}
-  .btn.fx-rec.active, .btn.mute-btn.muted, .btn.flam-btn.active{background:var(--warning); color: var(--bg);}
+  .btn.fx-rec.active, .btn.mute-btn.muted, .btn.flam-btn.active, .btn.fx-bypass.active{background:var(--warning); color: var(--bg);}
   .panel{
-    background:linear-gradient(180deg,#121b28,#0f1722);border-radius:18px;padding:16px;box-shadow:var(--shadow);margin:12px 0
+    background:linear-gradient(180deg,#121b28,#0f1722);border-radius:18px;padding:16px;box-shadow:var(--shadow);margin:9px 0
   }
   .block{
     background:var(--panel2);border-radius:14px;padding:12px;
@@ -92,20 +92,20 @@
 
   <section class="panel">
     <div class="block" style="display:flex; flex-direction: row; align-items:center;justify-content:flex-start;gap:16px; flex-wrap: wrap;">
-      <div class="preset">
-        <span class="help">Track</span>
-        <button id="prevTrack" class="mini">&lt;</button>
-        <div id="trackName" class="presetname" style="min-width: 120px;"></div>
-        <button id="nextTrack" class="mini">&gt;</button>
-        <button id="muteBtn" class="btn mute-btn" style="padding: 8px 16px;">Mute</button>
-      </div>
-      <div class="preset">
-        <span class="help">Sound</span>
-        <button id="prevPreset" class="mini">&lt;</button>
-        <div id="presetName" class="presetname"></div>
-        <button id="nextPreset" class="mini">&gt;</button>
-        <button id="audition" class="tri">▶</button>
-        <button id="resetBtn" class="btn" style="padding: 8px 16px;">Reset</button>
+      <div class="row">
+        <div class="preset">
+            <button id="prevTrack" class="mini">&lt;</button>
+            <div id="trackName" class="presetname" style="min-width: 120px;"></div>
+            <button id="nextTrack" class="mini">&gt;</button>
+        </div>
+        <div class="preset">
+            <span class="help">Voice</span>
+            <button id="prevPreset" class="mini">&lt;</button>
+            <div id="presetName" class="presetname"></div>
+            <button id="nextPreset" class="mini">&gt;</button>
+            <button id="audition" class="tri">▶</button>
+            <button id="resetBtn" class="btn" style="padding: 8px 16px;">Reset</button>
+        </div>
       </div>
        <div class="miniSel">
             <span class="help">Mute Group</span>
@@ -199,11 +199,18 @@
         <div class="block" style="flex: 1;">
             <div>
                 <div class="row knobrow" style="justify-content: center;">
-                    <div class="kwrap"><div class="knob" data-id="rollRate"><span class="dot"></span><input type="range" min="0" max="2" value="1" step="1"></div><div class="tag">Roll Rate</div></div>
+                    <div class="kwrap">
+                        <div class="knob" data-id="rollRate"><span class="dot"></span><input type="range" min="0" max="3" value="1" step="1"></div>
+                        <div class="tag" id="rollRateTag">Rate</div>
+                        <button id="rollBtn" class="btn" style="height: 42px; width: 60px; border-radius: 12px; padding: 0; margin-top: 8px;">Roll</button>
+                    </div>
                     <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <button id="rollBtn" class="btn" style="height: 42px; width: 60px; border-radius: 12px; padding: 0;">Roll</button>
                         <button id="flamBtn" class="btn flam-btn" style="height: 42px; width: 60px; border-radius: 12px; padding: 0;">Flam</button>
                         <button id="reverseBtn" class="btn reverse" style="height: 42px; width: 60px; border-radius: 12px; padding: 0;">Reverse</button>
+                        <button id="fxBypassBtn" class="btn fx-bypass" style="height: 42px; width: 60px; border-radius: 12px; padding: 0;">FX Bypass</button>
+                    </div>
+                     <div style="display: flex; flex-direction: column; gap: 8px;">
+                         <button id="muteBtn" class="btn mute-btn" style="height: 42px; width: 60px; border-radius: 12px; padding: 0;">Mute</button>
                     </div>
                 </div>
             </div>
@@ -329,6 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return { reverbSend, delay, delayFb, delaySend };
     });
 
+    let isFxBypassed = false;
     function triggerVoice(track, trackIndex, when=ctx.currentTime, velocityOverride = null){
     const p=track.params;
     const velocity = (velocityOverride || p.steps[step % 128] || p.velocity) / 127;
@@ -401,9 +409,11 @@ document.addEventListener('DOMContentLoaded', () => {
     vGain.gain.linearRampToValueAtTime(0, now+a+h+d+r);
 
     mix.connect(hp).connect(lp).connect(vGain).connect(panner).connect(masterGain);
-    const fx = trackFX[trackIndex];
-    panner.connect(fx.reverbSend);
-    panner.connect(fx.delaySend);
+    if (!isFxBypassed) {
+        const fx = trackFX[trackIndex];
+        panner.connect(fx.reverbSend);
+        panner.connect(fx.delaySend);
+    }
 
     const stopAt=now+a+h+d+r+0.1;
     sources.forEach(s=>{if(s.start) s.start(now); s.stop(stopAt);});
@@ -580,7 +590,8 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ---------- Transport / clock ---------- */
     let isPlaying=false, isReversed=false, step=0, lastTick=0, swing=0, timer=0;
     let isRolling = false, rollRate = 1;
-    const rollRates = [4, 8, 16]; // 8th, 16th, 32nd
+    const rollRates = [4, 8, 16, 32];
+    const rollRateLabels = ["1/8", "1/16", "1/32", "1/64"];
     let isFxRec = false;
 
     function schedule(){
@@ -674,7 +685,10 @@ document.addEventListener('DOMContentLoaded', () => {
         masterLP.frequency.setTargetAtTime(+e.target.value, ctx.currentTime, 0.01);
         if (isFxRec && isPlaying) motionData.lp[step % 128] = +e.target.value;
     });
-    uiKnobs.rollRate.addEventListener('input', e => rollRate = +e.target.value);
+    uiKnobs.rollRate.addEventListener('input', e => {
+        rollRate = +e.target.value;
+        document.getElementById('rollRateTag').textContent = rollRateLabels[rollRate];
+    });
 
 
     Object.keys(uiKnobs).forEach(key => {
@@ -772,6 +786,11 @@ document.addEventListener('DOMContentLoaded', () => {
         pageNumDiv.textContent = currentSeqPage + 1;
         highlightSteps();
         updateActiveBarsAndIndicators();
+    });
+
+    document.getElementById('fxBypassBtn').addEventListener('click', (e) => {
+        isFxBypassed = !isFxBypassed;
+        e.target.classList.toggle('active', isFxBypassed);
     });
 
 
